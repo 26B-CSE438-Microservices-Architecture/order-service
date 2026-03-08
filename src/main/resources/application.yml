@@ -1,0 +1,56 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: order-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/orderdb}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:secret}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+restaurant:
+  service:
+    url: ${RESTAURANT_SERVICE_URL:http://restaurant-service:8083}
+
+payment:
+  service:
+    url: ${PAYMENT_SERVICE_URL:http://payment-service:8084}
+
+jwt:
+  secret: ${JWT_SECRET:your-256-bit-secret-key-here-must-be-long-enough}
+
+order:
+  payment-timeout-minutes: ${PAYMENT_TIMEOUT_MINUTES:10}
+  restaurant-timeout-minutes: ${RESTAURANT_TIMEOUT_MINUTES:5}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.foodapp.orderservice: DEBUG
+    org.springframework.kafka: INFO

@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Order Service — Tam Sistem Akışı</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Syne:wght@700;800&display=swap');
+
+:root {
+  --bg:       #060a10;
+  --surface:  #0b1220;
+  --card:     #0f1a2e;
+  --border:   #1a3050;
+  --teal:     #00e5c0;
+  --blue:     #3db8ff;
+  --orange:   #ff8c42;
+  --red:      #ff5757;
+  --green:    #3dff8f;
+  --purple:   #c084fc;
+  --yellow:   #ffe066;
+  --gray:     #4a6080;
+  --text:     #d4e4f7;
+  --muted:    #5a7a9a;
+  --mono:     'IBM Plex Mono', monospace;
+  --display:  'Syne', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--mono); }
+
+/* ─── HEADER ────────────────────────────────────────────── */
+#header {
+  position: fixed; top: 0; left: 0; right: 0; height: 50px; z-index: 200;
+  background: rgba(6,10,16,0.97); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px; gap: 16px;
+  backdrop-filter: blur(10px);
+}
+#header h1 { font-family: var(--display); font-size: 15px; color: var(--teal); letter-spacing: 1px; }
+.hdivider { width: 1px; height: 22px; background: var(--border); }
+.hbtn {
+  background: var(--card); border: 1px solid var(--border); color: var(--muted);
+  padding: 4px 12px; border-radius: 5px; font-family: var(--mono); font-size: 11px;
+  cursor: pointer; transition: all .15s;
+}
+.hbtn:hover { border-color: var(--teal); color: var(--teal); }
+#zoom-display { font-size: 11px; color: var(--muted); min-width: 40px; text-align: center; }
+
+.legend-row { display: flex; gap: 18px; margin-left: auto; align-items: center; }
+.leg { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); white-space: nowrap; }
+.leg-pip { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* ─── VIEWPORT ──────────────────────────────────────────── */
+#vp {
+  position: fixed; top: 50px; left: 0; right: 0; bottom: 0;
+  overflow: hidden; cursor: grab;
+}
+#vp.panning { cursor: grabbing; }
+#world {
+  position: absolute; top: 0; left: 0;
+  transform-origin: 0 0;
+  width: 4200px; height: 3000px;
+}
+
+/* ─── SVG (arrows layer) ────────────────────────────────── */
+#svg-layer {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 3;
+}
+
+/* ─── SWIM LANE ─────────────────────────────────────────── */
+.lane {
+  position: absolute;
+  border-radius: 14px;
+  z-index: 1;
+}
+.lane-title {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  writing-mode: horizontal-tb; white-space: nowrap;
+  padding: 3px 10px; border-radius: 20px;
+}
+
+/* ─── STATE NODE ─────────────────────────────────────────── */
+.snode {
+  position: absolute; z-index: 10;
+  border-radius: 9px; border: 2px solid;
+  padding: 9px 15px; min-width: 120px;
+  text-align: center; cursor: pointer;
+  transition: transform .18s, box-shadow .18s;
+  font-size: 11px; font-weight: 700; line-height: 1.3;
+}
+.snode:hover { transform: scale(1.06) translateY(-2px); z-index: 30; }
+.snode .sub { font-size: 8px; font-weight: 400; color: var(--muted); margin-top: 3px; display: block; }
+
+/* ─── NODE VARIANTS ─────────────────────────────────────── */
+.n-idle    { background:#101820; border-color:#2a4060; color:#8ab0d0; }
+.n-pay     { background:#071828; border-color:var(--blue);   color:var(--blue);   box-shadow:0 0 14px #3db8ff25; }
+.n-ok      { background:#051a12; border-color:var(--teal);   color:var(--teal);   box-shadow:0 0 14px #00e5c025; }
+.n-prep    { background:#1a1500; border-color:var(--yellow);  color:var(--yellow);  box-shadow:0 0 14px #ffe06625; }
+.n-done    { background:#041808; border-color:var(--green);  color:var(--green);  box-shadow:0 0 16px #3dff8f35; }
+.n-err     { background:#1a0505; border-color:var(--red);    color:var(--red);    box-shadow:0 0 14px #ff575725; }
+.n-warn    { background:#1a0e00; border-color:var(--orange); color:var(--orange); box-shadow:0 0 14px #ff8c4225; }
+.n-refund  { background:#120820; border-color:var(--purple); color:var(--purple); box-shadow:0 0 14px #c084fc25; }
+.n-terminal{ border-width:3px; }
+
+/* ─── SERVICE BADGE ─────────────────────────────────────── */
+.svc-badge {
+  position: absolute; z-index: 12;
+  border: 1px solid; border-radius: 7px;
+  font-size: 9px; font-weight: 700; letter-spacing: 1px;
+  padding: 4px 10px; text-transform: uppercase; white-space: nowrap;
+}
+
+/* ─── EDGE LABEL ─────────────────────────────────────────── */
+.elabel {
+  position: absolute; z-index: 20;
+  font-size: 9px; font-weight: 600;
+  padding: 2px 7px; border-radius: 4px;
+  white-space: nowrap; pointer-events: none;
+  background: rgba(6,10,16,0.92);
+  border: 1px solid;
+  line-height: 1.4;
+}
+
+/* ─── TOOLTIP ───────────────────────────────────────────── */
+#tip {
+  position: fixed; z-index: 999;
+  background: #0b1220; border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 16px;
+  max-width: 300px; pointer-events: none;
+  opacity: 0; transition: opacity .15s;
+  box-shadow: 0 12px 40px rgba(0,0,0,.7);
+}
+#tip.show { opacity: 1; }
+#tip h4 { color: var(--teal); font-size: 12px; margin-bottom: 6px; }
+#tip p  { color: var(--muted); font-size: 10px; line-height: 1.6; }
+#tip .tag { display:inline-block; margin:2px 2px 0; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700; }
+
+/* ─── MINIMAP ───────────────────────────────────────────── */
+#minimap {
+  position: fixed; bottom: 16px; right: 16px; z-index: 200;
+  width: 200px; height: 130px;
+  background: rgba(11,18,32,.95); border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+}
+#mm { width: 200px; height: 130px; }
+#mm-label { position:absolute; top:5px; left:9px; font-size:8px; color:var(--muted); letter-spacing:1px; }
+
+/* ─── SCENARIO TABS ─────────────────────────────────────── */
+#scenarios {
+  position: fixed; top: 58px; left: 12px; z-index: 200;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.sc-tab {
+  background: rgba(11,18,32,.95); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 10px; font-size: 9px; cursor: pointer;
+  color: var(--muted); transition: all .15s; white-space: nowrap;
+  border-left: 3px solid transparent;
+}
+.sc-tab:hover, .sc-tab.active { color: var(--text); border-left-color: var(--teal); background: var(--card); }
+.sc-dot { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:5px; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>ORDER SERVICE — TAM SİSTEM AKIŞ DİYAGRAMI</h1>
+  <div class="hdivider"></div>
+  <button class="hbtn" onclick="zoom(0.12)">＋</button>
+  <span id="zoom-display">55%</span>
+  <button class="hbtn" onclick="zoom(-0.12)">－</button>
+  <button class="hbtn" onclick="resetView()">↺ Reset</button>
+  <div class="hdivider"></div>
+  <div class="legend-row">
+    <div class="leg"><div class="leg-pip" style="background:var(--blue)"></div>Ödeme süreci</div>
+    <div class="leg"><div class="leg-pip" style="background:var(--teal)"></div>Mutlu yol</div>
+    <div class="leg"><div class="leg-pip" style="background:var(--yellow)"></div>Hazırlık</div>
+    <div class="leg"><div class="leg-pip" style="background:var(--red)"></div>Hata / İptal</div>
+    <div class="leg"><div class="leg-pip" style="background:var(--purple)"></div>İade</div>
+    <div class="leg"><div class="leg-pip" style="background:var(--orange); opacity:.8"></div>Timeout / Müşteri iptal</div>
+    <div class="leg"><div class="leg-pip" style="border:1px dashed var(--orange); background:transparent"></div>Opsiyonel yol</div>
+  </div>
+</div>
+
+<div id="scenarios">
+  <div style="font-size:9px;color:var(--muted);letter-spacing:1px;padding:2px 4px;">SENARYOLAR</div>
+  <div class="sc-tab active" onclick="jumpTo(660,130,0.55)"><span class="sc-dot" style="background:var(--teal)"></span>① Mutlu Yol</div>
+  <div class="sc-tab" onclick="jumpTo(660,820,0.55)"><span class="sc-dot" style="background:var(--red)"></span>② Ödeme Başarısız</div>
+  <div class="sc-tab" onclick="jumpTo(660,820,0.55)"><span class="sc-dot" style="background:var(--orange)"></span>③ Ödeme Timeout</div>
+  <div class="sc-tab" onclick="jumpTo(660,1450,0.55)"><span class="sc-dot" style="background:var(--red)"></span>④ Restoran Reddet</div>
+  <div class="sc-tab" onclick="jumpTo(660,1450,0.55)"><span class="sc-dot" style="background:var(--orange)"></span>⑤ Restoran Timeout</div>
+  <div class="sc-tab" onclick="jumpTo(660,1800,0.55)"><span class="sc-dot" style="background:var(--orange)"></span>⑥ Müşteri İptal</div>
+  <div class="sc-tab" onclick="jumpTo(660,2200,0.55)"><span class="sc-dot" style="background:var(--purple)"></span>⑦ İade Akışı</div>
+</div>
+
+<div id="vp">
+  <div id="world">
+    <svg id="svg-layer" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+</div>
+
+<div id="minimap"><canvas id="mm"></canvas><div id="mm-label">MİNİHARİTA</div></div>
+<div id="tip"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// LAYOUT CONFIG
+// ═══════════════════════════════════════════════════
+
+// Swim lanes (vertical columns)
+const LANES = [
+  { id:'client',     label:'MÜŞTERİ / FRONTEND',     x:20,   w:220, color:'#1e3a5f22', border:'#1e3a5f', tc:'#3db8ff' },
+  { id:'gateway',    label:'GATEWAY / AUTH',           x:260,  w:200, color:'#0f2a1f22', border:'#1a4030', tc:'#00e5c0' },
+  { id:'order',      label:'ORDER SERVICE ★',          x:480,  w:380, color:'#00e5c010', border:'#00e5c040', tc:'#00e5c0' },
+  { id:'restaurant', label:'RESTAURANT SERVICE',       x:880,  w:220, color:'#1a150022', border:'#3a3000', tc:'#ffe066' },
+  { id:'payment',    label:'PAYMENT SERVICE',          x:1120, w:220, color:'#07182822', border:'#0d3060', tc:'#3db8ff' },
+  { id:'kafka',      label:'KAFKA EVENT BUS',          x:1360, w:200, color:'#12082022', border:'#2a1040', tc:'#c084fc' },
+  { id:'notif',      label:'NOTIFICATION SERVICE',     x:1580, w:200, color:'#0a180822', border:'#1a3010', tc:'#3dff8f' },
+  { id:'scheduler',  label:'SCHEDULER (CRON @60s)',    x:1800, w:220, color:'#1a060622', border:'#3a1010', tc:'#ff8c42' },
+];
+
+const LANE_HEIGHT = 2780;
+const LANE_TOP    = 70;
+
+// State nodes
+// x,y = center
+const N = {
+  // ── CART ─────────────────────────────────────────────────────
+  CART_EMPTY:   { x:120, y:160,  cls:'n-idle',   label:'Sepet Boş',         sub:'GET /cart → []' },
+  CART_ACTIVE:  { x:120, y:290,  cls:'n-idle',   label:'Sepet AKTİF',       sub:'CartStatus: ACTIVE' },
+  CHECKOUT:     { x:370, y:410,  cls:'n-pay',    label:'Checkout Başladı',  sub:'POST /cart/checkout' },
+
+  // ── ORDER STATE MACHINE ───────────────────────────────────────
+  CREATED:      { x:660, y:530,  cls:'n-idle',   label:'CREATED',           sub:'Order DB\'ye yazıldı' },
+  PAY_PENDING:  { x:660, y:680,  cls:'n-pay',    label:'PAYMENT PENDING',   sub:'paymentTimeoutAt set (+10dk)' },
+  PAY_FAILED:   { x:1230,y:680,  cls:'n-err',    label:'PAYMENT FAILED',    sub:'PaymentStatus: FAILED' },
+  PAID:         { x:660, y:870,  cls:'n-ok',     label:'PAID ✓',            sub:'PaymentStatus: PAID' },
+  CONFIRMED:    { x:660, y:1070, cls:'n-ok',     label:'CONFIRMED BY\nRESTAURANT', sub:'estimatedDelivery set' },
+  REJECTED:     { x:1000,y:1070, cls:'n-err',    label:'REJECTED BY\nRESTAURANT', sub:'Restoran reddetti' },
+  PREPARING:    { x:660, y:1270, cls:'n-prep',   label:'PREPARING',         sub:'Mutfak hazırlıyor' },
+  READY:        { x:660, y:1450, cls:'n-prep',   label:'READY FOR\nPICKUP', sub:'order.ready event' },
+  ONWAY:        { x:660, y:1630, cls:'n-prep',   label:'ON THE WAY',        sub:'Kurye yolda' },
+  DELIVERED:    { x:660, y:1820, cls:'n-done n-terminal', label:'DELIVERED ✓',  sub:'Terminal • order.delivered' },
+
+  // ── CANCEL / TIMEOUT ─────────────────────────────────────────
+  CANCELLED:    { x:660, y:2060, cls:'n-err n-terminal',  label:'CANCELLED',        sub:'Terminal state' },
+  EXPIRED:      { x:1900,y:680,  cls:'n-err n-terminal',  label:'EXPIRED',          sub:'paymentTimeout geçti' },
+  REST_TIMEOUT: { x:1900,y:1070, cls:'n-warn n-terminal', label:'RESTAURANT\nTIMEOUT', sub:'restaurantTimeout geçti' },
+
+  // ── REFUND ───────────────────────────────────────────────────
+  REFUND_REQ:   { x:660, y:2260, cls:'n-refund',  label:'REFUND\nREQUESTED', sub:'İade başlatıldı' },
+  REFUNDED:     { x:660, y:2460, cls:'n-refund n-terminal', label:'REFUNDED ✓',  sub:'Terminal • PaymentStatus:REFUNDED' },
+};
+
+// Edges: from, to, label, color, dashed, waypoints[]
+// waypoints are absolute {x,y} on canvas
+const EDGES = [
+  // ── CART FLOW ─────────────────────────────────────────────────
+  { f:'CART_EMPTY',  t:'CART_ACTIVE', label:'POST /cart/items\n(ürün ekle)', color:'#4a6080', w:[{x:120,y:220},{x:120,y:260}] },
+  { f:'CART_ACTIVE', t:'CHECKOUT',    label:'POST /cart/checkout\n+ Idempotency-Key header', color:'#3db8ff' },
+
+  // ── ORDER CREATION ────────────────────────────────────────────
+  { f:'CHECKOUT',    t:'CREATED',     label:'CheckoutUseCase:\nvalidate → create order', color:'#00e5c0' },
+  { f:'CREATED',     t:'PAY_PENDING', label:'transitionTo(PAYMENT_PENDING)\n+ initiatePayment()', color:'#3db8ff' },
+
+  // ── HAPPY PATH: payment ───────────────────────────────────────
+  { f:'PAY_PENDING', t:'PAID',        label:'payment.completed (Kafka)\n→ PaymentCompletedEventHandler', color:'#00e5c0' },
+
+  // ── HAPPY PATH: restaurant ────────────────────────────────────
+  { f:'PAID',        t:'CONFIRMED',   label:'PATCH /restaurant/{id}/confirm\n+ estimatedPreparationMinutes', color:'#00e5c0' },
+
+  // ── HAPPY PATH: preparation ───────────────────────────────────
+  { f:'CONFIRMED',   t:'PREPARING',   label:'PATCH /restaurant/{id}/status\nbody: {status:"PREPARING"}', color:'#ffe066' },
+  { f:'PREPARING',   t:'READY',       label:'PATCH /restaurant/{id}/status\nbody: {status:"READY_FOR_PICKUP"}', color:'#ffe066' },
+  { f:'READY',       t:'ONWAY',       label:'PATCH /restaurant/{id}/status\nbody: {status:"ON_THE_WAY"}', color:'#ffe066' },
+  { f:'ONWAY',       t:'DELIVERED',   label:'PATCH /restaurant/{id}/status\nbody: {status:"DELIVERED"}', color:'#3dff8f' },
+
+  // ── PAYMENT FAILED ────────────────────────────────────────────
+  { f:'PAY_PENDING', t:'PAY_FAILED',  label:'payment.failed (Kafka)\n→ PaymentFailedEventHandler', color:'#ff5757',
+    w:[{x:730,y:720},{x:1230,y:720}] },
+  { f:'PAY_FAILED',  t:'CANCELLED',   label:'→ CANCELLED\n(no refund, PaymentStatus:FAILED)', color:'#ff5757',
+    w:[{x:1230,y:750},{x:1230,y:2100},{x:730,y:2100}] },
+
+  // ── PAYMENT TIMEOUT ───────────────────────────────────────────
+  { f:'PAY_PENDING', t:'EXPIRED',     label:'@Scheduled: paymentTimeoutAt < now\n(her 60sn kontrol)', color:'#ff8c42',
+    w:[{x:730,y:720},{x:1900,y:720}] },
+  { f:'EXPIRED',     t:'CANCELLED',   label:'→ CANCELLED', color:'#ff8c42',
+    w:[{x:1900,y:750},{x:1900,y:2100},{x:730,y:2100}] },
+
+  // ── RESTAURANT REJECT ─────────────────────────────────────────
+  { f:'PAID',        t:'REJECTED',    label:'PATCH /restaurant/{id}/reject\n+ rejectReason', color:'#ff5757',
+    w:[{x:730,y:910},{x:1000,y:910},{x:1000,y:1040}] },
+  { f:'REJECTED',    t:'CANCELLED',   label:'→ CANCELLED + order.cancelled\n(refund gerekirse başlatılır)', color:'#ff5757',
+    w:[{x:1000,y:1130},{x:1000,y:2100},{x:730,y:2100}] },
+
+  // ── RESTAURANT TIMEOUT ────────────────────────────────────────
+  { f:'PAID',        t:'REST_TIMEOUT', label:'@Scheduled: restaurantTimeoutAt < now\n(her 60sn kontrol, sadece PAID sipariş)', color:'#ff8c42',
+    w:[{x:730,y:910},{x:1900,y:910},{x:1900,y:1040}] },
+  { f:'REST_TIMEOUT',t:'CANCELLED',   label:'→ CANCELLED + refund başlatılır', color:'#ff8c42',
+    w:[{x:1900,y:1130},{x:1900,y:2100},{x:730,y:2100}] },
+
+  // ── CUSTOMER CANCEL (optional paths) ─────────────────────────
+  { f:'PAY_PENDING', t:'CANCELLED',   label:'POST /orders/{id}/cancel\n(müşteri / admin)', color:'#ff8c42', dashed:true,
+    w:[{x:600,y:720},{x:560,y:720},{x:560,y:2100},{x:600,y:2100}] },
+  { f:'CONFIRMED',   t:'CANCELLED',   label:'POST /orders/{id}/cancel', color:'#ff8c42', dashed:true,
+    w:[{x:600,y:1110},{x:545,y:1110},{x:545,y:2100},{x:600,y:2100}] },
+  { f:'PREPARING',   t:'CANCELLED',   label:'POST /orders/{id}/cancel', color:'#ff8c42', dashed:true,
+    w:[{x:600,y:1310},{x:530,y:1310},{x:530,y:2100},{x:600,y:2100}] },
+
+  // ── REFUND FLOW ───────────────────────────────────────────────
+  { f:'CANCELLED',   t:'REFUND_REQ',  label:'isRefundRequired()=true\n(PaymentStatus==PAID)', color:'#c084fc' },
+  { f:'REFUND_REQ',  t:'REFUNDED',    label:'payment.refunded (Kafka)\n→ PaymentRefundedEventHandler', color:'#c084fc' },
+];
+
+// Service interaction annotations (positioned on lane borders)
+const ANNOTATIONS = [
+  // Checkout → Restaurant validation
+  { x:860, y:450, label:'validateOrderItems()\nisRestaurantOpen()', color:'#ffe066', side:'right' },
+  // Checkout → Payment initiation
+  { x:1100, y:730, label:'initiatePayment(\n  orderId, amount)', color:'#3db8ff', side:'right' },
+  // Events to Kafka
+  { x:1340, y:570, label:'order.created', color:'#c084fc', side:'right' },
+  { x:1340, y:900, label:'order.confirmed', color:'#c084fc', side:'right' },
+  { x:1340, y:1490, label:'order.ready', color:'#c084fc', side:'right' },
+  { x:1340, y:1850, label:'order.delivered', color:'#c084fc', side:'right' },
+  { x:1340, y:2100, label:'order.cancelled', color:'#c084fc', side:'right' },
+  // Kafka → Notification
+  { x:1560, y:900, label:'push notification\n(müşteriye)', color:'#3dff8f', side:'right' },
+  { x:1560, y:1490, label:'push notification', color:'#3dff8f', side:'right' },
+  { x:1560, y:1850, label:'push notification', color:'#3dff8f', side:'right' },
+];
+
+// ═══════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════
+const world = document.getElementById('world');
+const svgEl = document.getElementById('svg-layer');
+
+// ── Swim lanes ──────────────────────────────────────
+LANES.forEach(l => {
+  const div = document.createElement('div');
+  div.className = 'lane';
+  div.style.cssText = `left:${l.x}px; top:${LANE_TOP}px; width:${l.w}px; height:${LANE_HEIGHT}px;
+    background:${l.color}; border:1px solid ${l.border};`;
+  world.appendChild(div);
+
+  const title = document.createElement('div');
+  title.className = 'lane-title';
+  title.style.cssText = `color:${l.tc}; background:${l.border}44; border:1px solid ${l.border}; top:12px; left:50%; transform:translateX(-50%); position:absolute;`;
+  title.textContent = l.label;
+  div.appendChild(title);
+});
+
+// ── State nodes ─────────────────────────────────────
+const nodeEls = {};
+Object.entries(N).forEach(([id, nd]) => {
+  const div = document.createElement('div');
+  div.className = `snode ${nd.cls}`;
+  div.id = 'nd-' + id;
+  div.innerHTML = nd.label.replace(/\n/g,'<br>') +
+    (nd.sub ? `<span class="sub">${nd.sub}</span>` : '');
+  // center-position: x,y are center
+  div.style.cssText = `left:${nd.x}px; top:${nd.y}px; transform:translate(-50%,-50%);`;
+  world.appendChild(div);
+  nodeEls[id] = div;
+
+  div.addEventListener('mouseenter', e => showTip(id, nd, e));
+  div.addEventListener('mouseleave', hideTip);
+});
+
+// ── Tooltip ─────────────────────────────────────────
+const tipEl = document.getElementById('tip');
+const TIPS = {
+  CART_EMPTY:   'GET /cart → boş dizi döner. Kullanıcının hiç aktif sepeti yok.',
+  CART_ACTIVE:  'POST /cart/items ile ürün eklenir. RestaurantGateway.validateOrderItems() çağrılır, fiyat snapshot kaydedilir. Aynı restauranttan ürün kontrolü yapılır.',
+  CHECKOUT:     'POST /cart/checkout + Idempotency-Key header zorunlu. CheckoutUseCase: idempotency kontrol → restaurant açık mı? → fiyatları yeniden doğrula → order oluştur → payment başlat → sepeti kilitle (CHECKED_OUT).',
+  CREATED:      'Order entity DB\'ye yazıldı. id, correlationId, idempotencyKey set edildi. Henüz payment başlatılmadı.',
+  PAY_PENDING:  'initiatePayment() çağrıldı. paymentTimeoutAt = şimdi + 10 dakika. Scheduler bu süreyi izler.',
+  PAY_FAILED:   'payment.failed Kafka eventi geldi. PaymentFailedEventHandler çalıştı. PaymentStatus: FAILED.',
+  PAID:         'payment.completed Kafka eventi. PaymentCompletedEventHandler çalıştı. order.confirmed eventi yayınlandı. restaurantTimeoutAt set edildi (+5 dk).',
+  CONFIRMED:    'Restoran siparişi kabul etti. estimatedDeliveryTime hesaplandı. PATCH /orders/restaurant/{id}/confirm endpoint.',
+  REJECTED:     'Restoran reddetti. PATCH /orders/restaurant/{id}/reject. order.cancelled eventi yayınlandı. Eğer ödeme alındıysa iade başlatılır.',
+  PREPARING:    'PATCH /orders/restaurant/{id}/status body:{status:"PREPARING"}. Mutfak hazırlamaya başladı.',
+  READY:        'PATCH /orders/restaurant/{id}/status body:{status:"READY_FOR_PICKUP"}. order.ready eventi → bildirim.',
+  ONWAY:        'PATCH /orders/restaurant/{id}/status body:{status:"ON_THE_WAY"}. Kurye teslim alıp yola çıktı.',
+  DELIVERED:    '⚡ TERMINAL STATE. Değiştirilemez. order.delivered eventi → bildirim. PaymentStatus: PAID olarak kalır.',
+  CANCELLED:    '⚡ TERMINAL STATE. Birden fazla yoldan gelinebilir: müşteri iptal, ödeme başarısız, timeout, restoran reddi. isCancellable() kontrolü: CREATED|PAY_PENDING|PAY_FAILED|PAID|CONFIRMED|PREPARING durumlarında iptal edilebilir.',
+  EXPIRED:      '⚡ TERMINAL STATE. Scheduler her 60 saniyede PAYMENT_PENDING siparişleri kontrol eder. paymentTimeoutAt < now ise EXPIRED.',
+  REST_TIMEOUT: '⚡ TERMINAL STATE. Scheduler her 60 saniyede PAID siparişleri kontrol eder. restaurantTimeoutAt < now ise RESTAURANT_TIMEOUT → CANCELLED → refund.',
+  REFUND_REQ:   'CANCELLED → REFUND_REQUESTED geçişi: isRefundRequired() = true demek PaymentStatus == PAID. order.cancelled eventi payment.refunded tetikler.',
+  REFUNDED:     '⚡ TERMINAL STATE. payment.refunded Kafka eventi. PaymentRefundedEventHandler çalıştı. PaymentStatus: REFUNDED.',
+};
+function showTip(id, nd, e) {
+  tipEl.innerHTML = `<h4>${nd.label.replace(/\n/,' ')}</h4><p>${TIPS[id]||nd.sub||''}</p>`;
+  tipEl.classList.add('show');
+}
+function hideTip() { tipEl.classList.remove('show'); }
+document.addEventListener('mousemove', e => {
+  tipEl.style.left = (e.clientX + 16) + 'px';
+  tipEl.style.top  = Math.max(60, e.clientY - 20) + 'px';
+});
+
+// ── SVG arrows ──────────────────────────────────────
+function getCenter(id) {
+  const nd = N[id];
+  return { x: nd.x, y: nd.y };
+}
+
+function buildArrow(edge, svg) {
+  const s  = getCenter(edge.f);
+  const e2 = getCenter(edge.t);
+  const col = edge.color || '#4a6080';
+  const mid = `arr-${col.replace('#','')}`;
+
+  // Build path
+  let pts;
+  if (edge.w && edge.w.length) {
+    pts = [s, ...edge.w, e2];
+  } else {
+    // Straight with slight curve
+    pts = [s, e2];
+  }
+
+  let d;
+  if (pts.length === 2) {
+    const dx = pts[1].x - pts[0].x;
+    const dy = pts[1].y - pts[0].y;
+    const cx1 = pts[0].x + dx * 0.15;
+    const cy1 = pts[0].y + dy * 0.65;
+    const cx2 = pts[1].x - dx * 0.15;
+    const cy2 = pts[1].y - dy * 0.35;
+    d = `M${pts[0].x},${pts[0].y} C${cx1},${cy1} ${cx2},${cy2} ${pts[1].x},${pts[1].y}`;
+  } else {
+    d = pts.map((p,i) => i===0 ? `M${p.x},${p.y}` : `L${p.x},${p.y}`).join(' ');
+  }
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d', d);
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke', col);
+  path.setAttribute('stroke-width', edge.dashed ? '1.5' : '2');
+  path.setAttribute('stroke-opacity', edge.dashed ? '0.55' : '0.8');
+  path.setAttribute('marker-end', `url(#${mid})`);
+  if (edge.dashed) path.setAttribute('stroke-dasharray','6,4');
+  svg.appendChild(path);
+
+  // Edge label — place at midpoint of path
+  if (edge.label) {
+    const mid2 = pts[Math.floor(pts.length/2)];
+    const prev = pts[Math.floor(pts.length/2)-1] || pts[0];
+    const lx = (prev.x + mid2.x) / 2;
+    const ly = (prev.y + mid2.y) / 2;
+    const lbl = document.createElement('div');
+    lbl.className = 'elabel';
+    lbl.style.cssText = `left:${lx+5}px; top:${ly-12}px; color:${col}; border-color:${col}33;`;
+    lbl.innerHTML = edge.label.replace(/\n/g,'<br>');
+    world.appendChild(lbl);
+  }
+}
+
+// Build SVG defs (arrowheads)
+const colors = ['#00e5c0','#3db8ff','#ff5757','#3dff8f','#ffe066','#c084fc','#ff8c42','#4a6080'];
+svgEl.innerHTML = `<defs>${colors.map(c => `
+  <marker id="arr-${c.replace('#','')}" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+    <path d="M0,0.5 L0,6.5 L8,3.5 z" fill="${c}" opacity="0.85"/>
+  </marker>`).join('')}</defs>`;
+
+EDGES.forEach(e => buildArrow(e, svgEl));
+
+// ── Service annotations ──────────────────────────────
+ANNOTATIONS.forEach(a => {
+  const div = document.createElement('div');
+  div.className = 'elabel';
+  div.style.cssText = `left:${a.x}px; top:${a.y}px; color:${a.color}; border-color:${a.color}44; font-size:8.5px;`;
+  div.innerHTML = a.label.replace(/\n/g,'<br>');
+  world.appendChild(div);
+});
+
+// ─── Section header banners ──────────────────────────
+const SECTIONS = [
+  { y: 120,  label: '① MUTLU YOL — Başarılı sipariş akışı', color: '#00e5c0' },
+  { y: 640,  label: '② ÖDEME AŞAMASI', color: '#3db8ff' },
+  { y: 1000, label: '③ RESTORAN ONAY AŞAMASI', color: '#ffe066' },
+  { y: 1230, label: '④ HAZIRLIK & TESLİMAT', color: '#ffe066' },
+  { y: 1980, label: '⑤ İPTAL SENARYOLARI', color: '#ff5757' },
+  { y: 2200, label: '⑥ İADE AKIŞI', color: '#c084fc' },
+];
+
+SECTIONS.forEach(sec => {
+  const div = document.createElement('div');
+  div.style.cssText = `position:absolute; left:480px; top:${sec.y}px; width:380px; height:26px;
+    background:${sec.color}15; border:1px solid ${sec.color}40; border-radius:5px;
+    display:flex; align-items:center; padding:0 10px;
+    font-size:9px; font-weight:700; color:${sec.color}; letter-spacing:1px; z-index:11;`;
+  div.textContent = sec.label;
+  world.appendChild(div);
+});
+
+// ── "Terminal" labels ────────────────────────────────
+['DELIVERED','CANCELLED','EXPIRED','REST_TIMEOUT','REFUNDED'].forEach(id => {
+  const nd = N[id];
+  const div = document.createElement('div');
+  div.style.cssText = `position:absolute; left:${nd.x+65}px; top:${nd.y-12}px;
+    font-size:8px; color:${id==='DELIVERED'?'#3dff8f':id==='REFUNDED'?'#c084fc':'#ff5757'};
+    background:rgba(6,10,16,.9); padding:1px 5px; border-radius:3px;
+    border:1px solid currentColor; z-index:12; white-space:nowrap;`;
+  div.textContent = 'TERMINAL';
+  world.appendChild(div);
+});
+
+// ═══════════════════════════════════════════════════
+// PAN / ZOOM
+// ═══════════════════════════════════════════════════
+let tx = -350, ty = -80, sc = 0.55;
+const vp = document.getElementById('vp');
+const zdEl = document.getElementById('zoom-display');
+
+function applyT() {
+  world.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`;
+  zdEl.textContent = Math.round(sc*100) + '%';
+}
+function zoom(d) {
+  sc = Math.max(0.12, Math.min(2.2, sc+d));
+  applyT();
+}
+function jumpTo(cx, cy, z) {
+  sc = z;
+  const rect = vp.getBoundingClientRect();
+  tx = rect.width/2  - cx*sc;
+  ty = rect.height/2 - cy*sc;
+  applyT();
+}
+function resetView() { tx=-350; ty=-80; sc=0.55; applyT(); }
+
+vp.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? -0.07 : 0.07;
+  const prev = sc;
+  sc = Math.max(0.12, Math.min(2.2, sc+delta));
+  const rect = vp.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  tx = mx - (mx-tx)*(sc/prev);
+  ty = my - (my-ty)*(sc/prev);
+  applyT();
+}, {passive:false});
+
+let drag = null;
+vp.addEventListener('mousedown', e => { drag={sx:e.clientX-tx, sy:e.clientY-ty}; vp.classList.add('panning'); });
+window.addEventListener('mousemove', e => { if(drag){ tx=e.clientX-drag.sx; ty=e.clientY-drag.sy; applyT(); } });
+window.addEventListener('mouseup', () => { drag=null; vp.classList.remove('panning'); });
+
+applyT();
+
+// ═══════════════════════════════════════════════════
+// MINIMAP
+// ═══════════════════════════════════════════════════
+const mmC = document.getElementById('mm');
+mmC.width=200; mmC.height=130;
+const mmCtx = mmC.getContext('2d');
+const WW=4200, WH=3000;
+const msx=200/WW, msy=130/WH;
+
+function drawMM() {
+  mmCtx.clearRect(0,0,200,130);
+  mmCtx.fillStyle='#0b1220'; mmCtx.fillRect(0,0,200,130);
+
+  LANES.forEach(l=>{
+    mmCtx.fillStyle=l.border+'33';
+    mmCtx.fillRect(l.x*msx, LANE_TOP*msy, l.w*msx, LANE_HEIGHT*msy);
+  });
+  Object.entries(N).forEach(([,nd])=>{
+    mmCtx.fillStyle='#00e5c055';
+    mmCtx.fillRect((nd.x-18)*msx, (nd.y-10)*msy, 36*msx, 20*msy);
+  });
+
+  // viewport rect
+  const vx = -tx/sc*msx;
+  const vy = -ty/sc*msy;
+  const vw = (vp.offsetWidth/sc)*msx;
+  const vh = (vp.offsetHeight/sc)*msy;
+  mmCtx.strokeStyle='#00e5c0'; mmCtx.lineWidth=1.5;
+  mmCtx.strokeRect(vx,vy,vw,vh);
+  requestAnimationFrame(drawMM);
+}
+drawMM();
+
+// Minimap click to jump
+mmC.addEventListener('click', e => {
+  const r = mmC.getBoundingClientRect();
+  const mx = (e.clientX-r.left)/msx;
+  const my = (e.clientY-r.top)/msy;
+  tx = vp.offsetWidth/2 - mx*sc;
+  ty = vp.offsetHeight/2 - my*sc;
+  applyT();
+});
+</script>
+</body>
+</html>
