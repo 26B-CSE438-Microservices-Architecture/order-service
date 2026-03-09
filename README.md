@@ -1,95 +1,85 @@
-# orderService
 # Order Service
 
-**Order Service**, sipariş yaşam döngüsünü yönetir:
-sipariş oluşturma, durum güncelleme, iptal, listeleme ve servisler arası koordinasyon.
+**Order Service**, sipariş yaşam döngüsünü yöneten, yüksek düzeyde tutarlılık ve ölçeklenebilirlik odaklı tasarlanmış bir mikroservistir. Sipariş oluşturma, durum yönetimi, ödeme ve restoran servisleri arasındaki koordinasyonu SAGA pattern kullanarak yönetir.
 
 ---
 
-## Responsibilities
-- Sipariş oluşturma ve doğrulama (restaurant, items, address, price snapshot)
-- Sipariş durum yönetimi (Created → Confirmed → Preparing → OnTheWay → Delivered / Cancelled)
-- Sipariş iptali kuralları
-- Sipariş listeleme/Detay görüntüleme
-- Ödeme (Payment) ve Restoran (Restaurant) servisleriyle entegrasyon
-- Event yayınlama (OrderCreated/OrderCancelled/OrderPaid vs.)
+## 🏗 Mimari Yapı ve Prensipler
+
+Bu servis **Domain-Driven Design (DDD)** ve **Hexagonal Architecture (Clean Architecture)** prensiplerine uygun olarak geliştirilmiştir.
+
+### Kullanılan Patternler
+*   **SAGA Pattern (Choreography):** Dağıtık transaction yönetimi için merkezi bir yönetici yerine olay tabanlı (event-driven) koordinasyon kullanılır.
+*   **Transactional Outbox Pattern:** Veritabanı işlemi ve event yayınlamanın atomik olması sağlanır. Eventler önce veritabanına yazılır, ardından bir Relay Scheduler ile Kafka'ya iletilir.
+*   **State Machine:** Karmaşık sipariş durum geçişleri (`CREATED` → `PAID` → `DELIVERED`) merkezi bir state machine üzerinden valide edilir.
+*   **Idempotency:** Mükerrer isteklerin (double checkout vb.) işlenmesini engellemek için `idempotencyKey` mekanizması uygulanır.
 
 ---
 
-## Functional Requirements (MVP)
-1. **Create Order**
-   - Kullanıcı (UserId) bir restorandan ürün seçerek sipariş oluşturabilmeli.
-   - Sipariş toplam tutarı ve kalemler Order içinde snapshot olarak tutulmalı.
+## 🔄 Sipariş Durum Makinesi (State Machine)
 
-2. **Get Order**
-   - OrderId ile sipariş detayları getirilebilmeli.
+Sipariş süreci aşağıdaki diyagramda belirtilen durum geçişlerini takip eder:
 
-3. **List Orders**
-   - UserId’ye göre siparişler listelenebilmeli.
-   - (Opsiyonel) RestaurantId’ye göre gelen siparişler listelenebilmeli.
+```mermaid
+stateDiagram-v2
+    [*] --> CREATED
+    CREATED --> PAYMENT_PENDING
+    CREATED --> CANCELLED
 
-4. **Cancel Order**
-   - Sipariş belirli durumlarda iptal edilebilmeli (örn: Confirmed sonrası iptal kısıtlı).
+    PAYMENT_PENDING --> PAID: PaymentCompleted
+    PAYMENT_PENDING --> PAYMENT_FAILED: PaymentFailed
+    PAYMENT_PENDING --> EXPIRED: Timeout
+    PAYMENT_PENDING --> CANCELLED: CustomerAction
 
-5. **Update Status**
-   - Restaurant/Delivery tarafı sipariş durumunu güncelleyebilmeli.
+    PAID --> CONFIRMED_BY_RESTAURANT: RestaurantAccept
+    PAID --> REJECTED_BY_RESTAURANT: KitchenReject
+    PAID --> RESTAURANT_TIMEOUT: Timeout
 
----
+    CONFIRMED_BY_RESTAURANT --> PREPARING
+    PREPARING --> READY_FOR_PICKUP
+    READY_FOR_PICKUP --> ON_THE_WAY
+    ON_THE_WAY --> DELIVERED: ProofOfDelivery
+    
+    DELIVERED --> [*]
 
-## Non-Functional Requirements
-- Idempotency: Create/Payment callback gibi isteklerde tekrar çağrılmaya dayanıklı olmalı.
-- Observability: log + correlationId + basic metrics
-- Validation: input doğrulama ve anlamlı hata cevapları
-- Authorization: rol bazlı (Customer/Restaurant/Admin/Delivery)
-
----
-
-## Data Model (Draft)
-### Order
-- id (uuid)
-- userId (string/int)
-- restaurantId (string/int)
-- status (enum)
-- items: [OrderItem]
-- totalAmount
-- currency
-- deliveryAddress (snapshot)
-- paymentStatus (Pending/Paid/Failed/Refunded)
-- createdAt, updatedAt
-
-### OrderItem
-- productId
-- name (snapshot)
-- unitPrice (snapshot)
-- quantity
-- lineTotal
-
-### Status Enum (Draft)
-- CREATED
-- CONFIRMED
-- PREPARING
-- ON_THE_WAY
-- DELIVERED
-- CANCELLED
+    CANCELLED --> REFUND_REQUESTED: if status=PAID
+    REFUND_REQUESTED --> REFUNDED
+    REFUNDED --> [*]
+```
 
 ---
 
-## REST API (Possible Interfaces)
+## 💾 Veri Modeli (Database Schema)
 
-### 1) Create Order
-POST `/orders`
-Request:
-```json
-{
-  "userId": "20210808065",
-  "restaurantId": "rest_123",
-  "items": [
-    { "productId": "p1", "quantity": 2 },
-    { "productId": "p9", "quantity": 1 }
-  ],
-  "deliveryAddress": {
-    "city": "Istanbul",
-    "district": "Kadikoy",
-    "text": "..."
-  }
-}
+Sistemde 6 ana tablo bulunmaktadır. Veritabanı şemasına ait detaylı dökümantasyona [db_schema.html](./db_schema.html) dosyasından ulaşabilirsiniz.
+
+*   **Orders:** Aggregate Root. Siparişin temel verilerini ve Value Object'lerini (Price, Address) tutar.
+*   **Order_Items:** Siparişe ait kalemlerin fiyat snapshot'larını saklar.
+*   **Carts / Cart_Items:** Kullanıcının aktif sepet verileri.
+*   **Order_Status_History:** Durum değişikliklerinin audit logları.
+*   **Outbox_Events:** Kafka'ya gönderilmeyi bekleyen olaylar.
+
+---
+
+## 🛠 Teknoloji Yığını
+
+*   **Runtime:** Java 21 (Spring Boot 3.2.x)
+*   **Database:** PostgreSQL 15 (Jakarta JPA / Hibernate)
+*   **Messaging:** Apache Kafka (Spring Kafka)
+*   **Security:** JWT based Authorization
+*   **Documentation:** SpringDoc OpenAPI (Swagger)
+*   **Observability:** Prometheus & Actuator
+
+---
+
+## 🚀 Başlangıç
+
+### Portlar
+*   **Order Service:** `8082`
+*   **Swagger UI:** [http://localhost:8082/swagger-ui.html](http://localhost:8082/swagger-ui.html)
+*   **Health:** [http://localhost:8082/actuator/health](http://localhost/8082/actuator/health)
+
+### Çalıştırma
+```bash
+docker-compose up -d
+```

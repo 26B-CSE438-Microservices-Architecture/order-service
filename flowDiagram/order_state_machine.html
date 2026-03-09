@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Service State Machine Visualization</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent-primary: #38bdf8;
+            --accent-secondary: #818cf8;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --gradient: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: var(--gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        /* Animated background elements */
+        .bg-blob {
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+            filter: blur(40px);
+            animation: move 20s infinite alternate;
+        }
+
+        .blob-1 {
+            top: -100px;
+            left: -100px;
+        }
+
+        .blob-2 {
+            bottom: -100px;
+            right: -100px;
+            animation-delay: -5s;
+        }
+
+        @keyframes move {
+            from {
+                transform: translate(0, 0) scale(1);
+            }
+
+            to {
+                transform: translate(100px, 100px) scale(1.1);
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            z-index: 10;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        p.subtitle {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        .diagram-wrapper {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeInUp 1s ease-out;
+            transition: transform 0.3s ease;
+        }
+
+        .diagram-wrapper:hover {
+            transform: translateY(-5px);
+            border-color: rgba(56, 189, 248, 0.3);
+        }
+
+        .mermaid-container {
+            overflow-x: auto;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        footer {
+            margin-top: 3rem;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            animation: fadeIn 1.5s ease;
+        }
+
+        /* Mermaid Theme Overrides */
+        .mermaid {
+            background-color: transparent !important;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Custom scrollbar for the diagram */
+        .diagram-wrapper::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .diagram-wrapper::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .diagram-wrapper::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+
+    <div class="container">
+        <header>
+            <h1>Order Service</h1>
+            <p class="subtitle">Distributed State Machine Visualization</p>
+        </header>
+
+        <main class="diagram-wrapper">
+            <div class="mermaid-container">
+                <div class="mermaid">
+                    stateDiagram-v2
+                    direction TB
+
+                    state "CREATED" as created
+                    state "PAYMENT_PENDING" as pay_pend
+                    state "PAID" as paid
+                    state "PAYMENT_FAILED" as pay_fail
+                    state "EXPIRED" as expired
+                    state "CANCELLED" as cancelled
+                    state "CONFIRMED_BY_RESTAURANT" as conf_rest
+                    state "REJECTED_BY_RESTAURANT" as rej_rest
+                    state "RESTAURANT_TIMEOUT" as rest_to
+                    state "PREPARING" as prep
+                    state "READY_FOR_PICKUP" as ready
+                    state "ON_THE_WAY" as transit
+                    state "DELIVERED" as deliv
+                    state "REFUND_REQUESTED" as ref_req
+                    state "REFUNDED" as ref_ok
+
+                    [*] --> created : Checkout
+
+                    created --> pay_pend : Initiate Transaction
+                    created --> cancelled : Manual Cancel
+
+                    pay_pend --> paid : PaymentCompletedEvent
+                    pay_pend --> pay_fail : PaymentFailedEvent
+                    pay_pend --> expired : Policy Timeout
+                    pay_pend --> cancelled : Customer Cancel
+
+                    pay_fail --> cancelled : Auto Failure
+
+                    paid --> conf_rest : Restaurant Accept
+                    paid --> rej_rest : Kitchen Reject
+                    paid --> rest_to : Response Timeout
+                    paid --> cancelled : Pre-fulfillment Cancel
+
+                    rej_rest --> cancelled : Refund Eligible
+                    rest_to --> cancelled : Refund Eligible
+
+                    conf_rest --> prep : Kitchen Sync
+                    conf_rest --> cancelled : Exceptional Cancel
+
+                    prep --> ready : Item Ready
+                    prep --> cancelled : Manual Override
+
+                    ready --> transit : Courier Dispatch
+                    transit --> deliv : Proof of Delivery
+
+                    deliv --> [*]
+
+                    cancelled --> ref_req : If Payment Was PAID
+                    ref_req --> ref_ok : Refund Processed
+                    ref_ok --> [*]
+                    expired --> [*]
+
+                    classDef failure fill:#450a0a,stroke:#ef4444,color:#fee2e2
+                    classDef success fill:#064e3b,stroke:#10b981,color:#dcfce7
+
+                    class pay_fail failure
+                    class rest_to failure
+                    class rej_rest failure
+                    class cancelled failure
+                    class deliv success
+                    class ref_ok success
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 FoodApp Architecture &bull; Generated for Order Microservice</p>
+        </footer>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            theme: 'dark',
+            startOnLoad: true,
+            state: {
+                padding: 20,
+                useMaxWidth: true,
+                htmlLabels: true
+            },
+            themeVariables: {
+                primaryColor: '#38bdf8',
+                primaryTextColor: '#f8fafc',
+                primaryBorderColor: '#38bdf8',
+                lineColor: '#94a3b8',
+                secondaryColor: '#1e293b',
+                tertiaryColor: '#0f172a',
+                nodeBorder: '#38bdf8',
+                titleColor: '#38bdf8'
+            }
+        });
+    </script>
+</body>
+
+</html>

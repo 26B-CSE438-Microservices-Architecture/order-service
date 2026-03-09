@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Service — Database Schema</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f1a;
+      --card: rgba(22, 28, 45, 0.8);
+      --border: rgba(255, 255, 255, 0.08);
+      --accent: #38bdf8;
+      --accent-muted: rgba(56, 189, 248, 0.2);
+      --text: #f8fafc;
+      --text-dim: #94a3b8;
+      --pk: #fbbf24;
+      --fk: #f87171;
+      --vo: #c084fc;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 3rem;
+      line-height: 1.5;
+      background-image:
+        radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 100% 100%, rgba(129, 140, 248, 0.05) 0%, transparent 50%);
+    }
+
+    header {
+      max-width: 1400px;
+      margin: 0 auto 3rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+
+    .meta {
+      color: var(--text-dim);
+      font-size: 1rem;
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .badge {
+      background: var(--accent-muted);
+      color: var(--accent);
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .table-card {
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .table-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .table-header {
+      padding: 1.25rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .table-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .entity-type {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    td {
+      padding: 0.75rem 1.25rem;
+      font-size: 0.9rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .col-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+    }
+
+    .col-type {
+      color: var(--text-dim);
+      font-size: 0.8rem;
+    }
+
+    .key {
+      font-size: 0.8rem;
+      margin-right: 0.5rem;
+    }
+
+    .pk {
+      color: var(--pk);
+    }
+
+    .fk {
+      color: var(--fk);
+    }
+
+    .nn {
+      color: #10b981;
+      font-weight: bold;
+      margin-left: 0.5rem;
+    }
+
+    .vo-section {
+      background: rgba(192, 132, 252, 0.05);
+      font-size: 0.7rem;
+      color: var(--vo);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 700;
+      padding: 0.4rem 1.25rem;
+    }
+
+    .indexes {
+      padding: 1rem 1.25rem;
+      background: rgba(0, 0, 0, 0.2);
+      font-size: 0.8rem;
+    }
+
+    .index-item {
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 0.25rem;
+    }
+
+    .index-item span {
+      color: var(--accent);
+    }
+
+    .legend {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--card);
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1.5rem;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .legend {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Database Schema</h1>
+    <div class="meta">
+      <span>Server: <strong>PostgreSQL 15</strong></span>
+      <span>Database: <strong>orderdb</strong></span>
+      <span class="badge">Microservices Architecture</span>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- ORDERS -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-name">orders</div>
+        <div class="entity-type">Aggregate Root</div>
+      </div>
+      <table>
+        <tr>
+          <td class="col-name"><span class="key pk">🔑</span>id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">user_id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">restaurant_id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">cart_id</td>
+          <td class="col-type">UUID</td>
+        </tr>
+        <tr>
+          <td class="col-name">status</td>
+          <td class="col-type">VARCHAR(50)<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">order_type</td>
+          <td class="col-type">VARCHAR(20)<span class="nn">●</span></td>
+        </tr>
+
+        <tr class="vo-section">
+          <td colspan="2">Money (Value Object)</td>
+        </tr>
+        <tr>
+          <td class="col-name">total_amount</td>
+          <td class="col-type">NUMERIC(19,2)</td>
+        </tr>
+        <tr>
+          <td class="col-name">currency</td>
+          <td class="col-type">VARCHAR(10)</td>
+        </tr>
+
+        <tr class="vo-section">
+          <td colspan="2">Delivery Address (Value Object)</td>
+        </tr>
+        <tr>
+          <td class="col-name">delivery_street</td>
+          <td class="col-type">VARCHAR(255)</td>
+        </tr>
+        <tr>
+          <td class="col-name">delivery_city</td>
+          <td class="col-type">VARCHAR(100)</td>
+        </tr>
+        <tr>
+          <td class="col-name">delivery_lat</td>
+          <td class="col-type">FLOAT8</td>
+        </tr>
+
+        <tr class="vo-section">
+          <td colspan="2">Audit & Concurrency</td>
+        </tr>
+        <tr>
+          <td class="col-name">idempotency_key</td>
+          <td class="col-type">VARCHAR(255) UQ</td>
+        </tr>
+        <tr>
+          <td class="col-name">version</td>
+          <td class="col-type">INT8 (Optimistic)</td>
+        </tr>
+        <tr>
+          <td class="col-name">created_at</td>
+          <td class="col-type">TIMESTAMP<span class="nn">●</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- ORDER_ITEMS -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-name">order_items</div>
+        <div class="entity-type">Entity</div>
+      </div>
+      <table>
+        <tr>
+          <td class="col-name"><span class="key pk">🔑</span>id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="key fk">🔗</span>order_id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">menu_item_id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">menu_item_name</td>
+          <td class="col-type">VARCHAR(255)</td>
+        </tr>
+        <tr>
+          <td class="col-name">quantity</td>
+          <td class="col-type">INT4<span class="nn">●</span></td>
+        </tr>
+        <tr class="vo-section">
+          <td colspan="2">Money (Snapshot)</td>
+        </tr>
+        <tr>
+          <td class="col-name">unit_price_amount</td>
+          <td class="col-type">NUMERIC(19,2)</td>
+        </tr>
+        <tr>
+          <td class="col-name">total_price_amount</td>
+          <td class="col-type">NUMERIC(19,2)</td>
+        </tr>
+      </table>
+      <div class="indexes">
+        <div class="index-item">INDEX <span>idx_order_items_order_id</span></div>
+      </div>
+    </div>
+
+    <!-- CARTS -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-name">carts</div>
+        <div class="entity-type">Entity</div>
+      </div>
+      <table>
+        <tr>
+          <td class="col-name"><span class="key pk">🔑</span>id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">user_id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">restaurant_id</td>
+          <td class="col-type">UUID</td>
+        </tr>
+        <tr>
+          <td class="col-name">status</td>
+          <td class="col-type">VARCHAR(20)<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">updated_at</td>
+          <td class="col-type">TIMESTAMP<span class="nn">●</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- CART_ITEMS -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-name">cart_items</div>
+        <div class="entity-type">Entity</div>
+      </div>
+      <table>
+        <tr>
+          <td class="col-name"><span class="key pk">🔑</span>id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="key fk">🔗</span>cart_id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">menu_item_id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">quantity</td>
+          <td class="col-type">INT4<span class="nn">●</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- ORDER_STATUS_HISTORY -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-name">order_status_history</div>
+        <div class="entity-type">Log Entity</div>
+      </div>
+      <table>
+        <tr>
+          <td class="col-name"><span class="key pk">🔑</span>id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="key fk">🔗</span>order_id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">from_status</td>
+          <td class="col-type">VARCHAR(50)</td>
+        </tr>
+        <tr>
+          <td class="col-name">to_status</td>
+          <td class="col-type">VARCHAR(50)<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">changed_at</td>
+          <td class="col-type">TIMESTAMP<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">changed_by</td>
+          <td class="col-type">VARCHAR(100)</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- OUTBOX_EVENTS -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-name">outbox_events</div>
+        <div class="entity-type">Infrastructure / SAGA</div>
+      </div>
+      <table>
+        <tr>
+          <td class="col-name"><span class="key pk">🔑</span>id</td>
+          <td class="col-type">UUID<span class="nn">●</span></td>
+        </tr>
+        <tr>
+          <td class="col-name">aggregate_type</td>
+          <td class="col-type">VARCHAR(100)</td>
+        </tr>
+        <tr>
+          <td class="col-name">aggregate_id</td>
+          <td class="col-type">VARCHAR(100)</td>
+        </tr>
+        <tr>
+          <td class="col-name">event_type</td>
+          <td class="col-type">VARCHAR(100)</td>
+        </tr>
+        <tr>
+          <td class="col-name">payload</td>
+          <td class="col-type">TEXT</td>
+        </tr>
+        <tr>
+          <td class="col-name">processed</td>
+          <td class="col-type">BOOLEAN (Default F)</td>
+        </tr>
+        <tr>
+          <td class="col-name">created_at</td>
+          <td class="col-type">TIMESTAMP</td>
+        </tr>
+      </table>
+      <div class="indexes">
+        <div class="index-item">INDEX <span>idx_outbox_processed</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="dot" style="background:var(--pk)"></div> Primary Key
+    </div>
+    <div class="legend-item">
+      <div class="dot" style="background:var(--fk)"></div> Foreign Key
+    </div>
+    <div class="legend-item">
+      <div class="dot" style="background:#10b981"></div> Mandatory (Not Null)
+    </div>
+    <div class="legend-item">
+      <div class="dot" style="background:var(--vo)"></div> Value Object Section
+    </div>
+  </div>
+
+</body>
+
+</html>
