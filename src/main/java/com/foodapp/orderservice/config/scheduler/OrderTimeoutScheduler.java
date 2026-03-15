@@ -46,16 +46,21 @@ public class OrderTimeoutScheduler {
     @Scheduled(fixedDelay = 60000)
     @Transactional
     public void expireRestaurantTimeouts() {
+        // Artık PAYMENT_HELD durumundaki siparişler için restoran timeout kontrolü yapılıyor
         List<Order> timedOut = orderRepository
-                .findByStatusAndRestaurantTimeoutAtBefore(OrderStatus.PAID, LocalDateTime.now());
+                .findByStatusAndRestaurantTimeoutAtBefore(OrderStatus.PAYMENT_HELD, LocalDateTime.now());
 
         timedOut.forEach(order -> {
             log.info("Restaurant timeout for orderId={}", order.getId());
             try {
+                // PAYMENT_HELD → RESTAURANT_TIMEOUT → CANCELLED
                 order.transitionTo(OrderStatus.RESTAURANT_TIMEOUT, stateMachine, "SYSTEM", "Restaurant did not respond");
                 order.cancel(stateMachine, OrderCancellationReason.RESTAURANT_TIMEOUT,
                         "Restaurant did not respond in time", "SYSTEM");
                 orderRepository.save(order);
+
+                // Para tutulmuş ama henüz çekilmemiş, hold'u serbest bırak
+                eventPublisher.publishPaymentHoldReleaseRequested(order);
                 eventPublisher.publishOrderCancelled(order);
             } catch (Exception e) {
                 log.error("Failed to handle restaurant timeout for order {}: {}", order.getId(), e.getMessage());

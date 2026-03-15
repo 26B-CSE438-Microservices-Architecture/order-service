@@ -34,8 +34,15 @@ public class CancelOrderUseCase {
             throw new IllegalStateException("Order cannot be cancelled in current state: " + order.getStatus());
 
         var reason = role == UserRole.ADMIN ? OrderCancellationReason.ADMIN_CANCEL : OrderCancellationReason.CUSTOMER_REQUEST;
+        boolean holdReleaseNeeded = order.isHoldReleaseRequired();
+
         order.cancel(stateMachine, reason, request.cancelReason(), requestingUserId.toString());
         orderRepository.save(order);
+
+        // Para tutulmuşsa (PAYMENT_HELD durumundayken iptal) hold'u serbest bırak
+        if (holdReleaseNeeded) {
+            eventPublisher.publishPaymentHoldReleaseRequested(order);
+        }
         eventPublisher.publishOrderCancelled(order);
     }
 }

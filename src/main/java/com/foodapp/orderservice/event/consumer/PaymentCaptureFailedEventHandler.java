@@ -1,6 +1,7 @@
 package com.foodapp.orderservice.event.consumer;
 
 import com.foodapp.orderservice.domain.aggregate.Order;
+import com.foodapp.orderservice.domain.enums.OrderCancellationReason;
 import com.foodapp.orderservice.domain.enums.OrderStatus;
 import com.foodapp.orderservice.domain.statemachine.OrderStateMachine;
 import com.foodapp.orderservice.event.producer.OrderEventPublisher;
@@ -15,29 +16,36 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Restoran onayından sonra ödeme çekimi (capture) başarısız oldu.
+ * Nadir bir durum; siparişi iptal et. Payment service kendi içinde çekimi geri alır.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class PaymentCompletedEventHandler {
+public class PaymentCaptureFailedEventHandler {
 
     private final OrderRepository orderRepository;
     private final OrderStateMachine stateMachine;
     private final OrderEventPublisher eventPublisher;
 
-    @KafkaListener(topics = "payment.completed", groupId = "order-service")
+    @KafkaListener(topics = "payment.capture_failed", groupId = "order-service")
     public void handle(ConsumerRecord<String, Map<String, Object>> record) {
         Map<String, Object> payload = (Map<String, Object>) record.value().get("payload");
         UUID orderId = UUID.fromString((String) payload.get("orderId"));
-        UUID paymentId = UUID.fromString((String) payload.get("paymentId"));
+        String failureReason = (String) payload.get("failureReason");
 
-        log.info("Payment completed for orderId={}", orderId);
+        log.error("Payment capture failed for orderId={}, reason={}", orderId, failureReason);
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId));
 
-        order.markPaymentCompleted(paymentId);
-        order.transitionTo(OrderStatus.PAID, stateMachine, "PAYMENT_SERVICE", "Payment completed");
+        // PAYMENT_CAPTURE_PENDING → PAYMENT_FAILED → CANCELLED
+        order.markPaymentFailed();
+        order.transitionTo(OrderStatus.PAYMENT_FAILED, stateMachine, "PAYMENT_SERVICE", failureReason);
+        order.cancel(stateMachine, OrderCancellationReason.PAYMENT_CAPTURE_FAILED, failureReason, "PAYMENT_SERVICE");
         orderRepository.save(order);
-        eventPublisher.publishOrderConfirmed(order);
+
+        eventPublisher.publishOrderCancelled(order);
     }
 }

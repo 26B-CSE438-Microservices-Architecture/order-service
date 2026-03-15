@@ -22,13 +22,50 @@ public class OrderEventPublisher {
     private final OutboxEventRepository outboxRepository;
     private final ObjectMapper objectMapper;
 
-    public void publishOrderCreated(Order order) {
-        publish("order.created", buildEvent("ORDER_CREATED", order.getCorrelationId(), Map.of(
+    /** Sipariş oluşturuldu, payment service'ten hold (para tutma) isteği */
+    public void publishPaymentHoldRequested(Order order) {
+        publish("order.payment.hold.requested", buildEvent("ORDER_PAYMENT_HOLD_REQUESTED", order.getCorrelationId(), Map.of(
                 "orderId", order.getId(),
                 "userId", order.getUserId(),
                 "restaurantId", order.getRestaurantId(),
                 "totalAmount", Map.of("amount", order.getTotalAmount().getAmount(), "currency", order.getTotalAmount().getCurrency()),
                 "paymentMethod", order.getPaymentMethod()
+        )));
+    }
+
+    /** Para tutuldu, restorana onay isteği gönder */
+    public void publishRestaurantApprovalRequested(Order order) {
+        publish("order.restaurant.approval.requested", buildEvent("ORDER_RESTAURANT_APPROVAL_REQUESTED", order.getCorrelationId(), Map.of(
+                "orderId", order.getId(),
+                "restaurantId", order.getRestaurantId(),
+                "userId", order.getUserId(),
+                "totalAmount", Map.of("amount", order.getTotalAmount().getAmount(), "currency", order.getTotalAmount().getCurrency()),
+                "items", order.getItems().stream().map(i -> Map.of(
+                        "menuItemId", i.getMenuItemId(),
+                        "menuItemName", i.getMenuItemName(),
+                        "quantity", i.getQuantity(),
+                        "unitPrice", i.getUnitPrice().getAmount()
+                )).toList()
+        )));
+    }
+
+    /** Restoran onayladı, payment service'ten capture (ödeme çekimi) isteği */
+    public void publishPaymentCaptureRequested(Order order) {
+        publish("order.payment.capture.requested", buildEvent("ORDER_PAYMENT_CAPTURE_REQUESTED", order.getCorrelationId(), Map.of(
+                "orderId", order.getId(),
+                "paymentId", order.getPaymentId(),
+                "userId", order.getUserId(),
+                "totalAmount", Map.of("amount", order.getTotalAmount().getAmount(), "currency", order.getTotalAmount().getCurrency())
+        )));
+    }
+
+    /** Restoran reddetti veya timeout, payment service'ten hold release isteği */
+    public void publishPaymentHoldReleaseRequested(Order order) {
+        publish("order.payment.hold.release.requested", buildEvent("ORDER_PAYMENT_HOLD_RELEASE_REQUESTED", order.getCorrelationId(), Map.of(
+                "orderId", order.getId(),
+                "paymentId", order.getPaymentId() != null ? order.getPaymentId() : "",
+                "userId", order.getUserId(),
+                "reason", order.getCancellationReason() != null ? order.getCancellationReason().name() : "UNKNOWN"
         )));
     }
 

@@ -136,14 +136,14 @@ public class CheckoutUseCase {
         cart.checkout();
         cartRepository.save(cart);
 
-        // 8. Save order and publish event (Outbox üzerinden asenkron gidecek)
+        // 8. Save order and publish hold event (Outbox üzerinden asenkron gidecek)
         Order saved = orderRepository.save(order);
 
-        // Bu kod Outbox tablosuna yazacak, OutboxRelayScheduler 2 saniye içinde Kafka'ya fırlatacak.
-        // Payment Service bu eventi duyup ödemeyi kendi içinde başlatacak. (Saga Pattern)
-        eventPublisher.publishOrderCreated(saved);
+        // Payment Service bu eventi duyarak parayı tutacak (hold). Hold onayı gelince
+        // restorana da onay bildirimi gönderilecek. (Saga Pattern - Hold & Capture)
+        eventPublisher.publishPaymentHoldRequested(saved);
 
-        log.info("Order created asynchronously. orderId={} userId={}", saved.getId(), userId);
+        log.info("Order created, payment hold requested. orderId={} userId={}", saved.getId(), userId);
         return OrderResponse.from(saved);
     }
 }

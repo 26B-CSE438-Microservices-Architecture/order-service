@@ -19,15 +19,25 @@ public class OrderStateMachine {
         ALLOWED_TRANSITIONS.put(OrderStatus.CREATED,
                 EnumSet.of(OrderStatus.PAYMENT_PENDING, OrderStatus.CANCELLED));
 
+        // Hold isteği gönderildi, payment service'ten hold_confirmed bekleniyor
         ALLOWED_TRANSITIONS.put(OrderStatus.PAYMENT_PENDING,
-                EnumSet.of(OrderStatus.PAID, OrderStatus.PAYMENT_FAILED, OrderStatus.EXPIRED, OrderStatus.CANCELLED));
+                EnumSet.of(OrderStatus.PAYMENT_HELD, OrderStatus.PAYMENT_FAILED, OrderStatus.EXPIRED, OrderStatus.CANCELLED));
+
+        // Para tutuldu, restoran onayı bekleniyor
+        ALLOWED_TRANSITIONS.put(OrderStatus.PAYMENT_HELD,
+                EnumSet.of(OrderStatus.CONFIRMED_BY_RESTAURANT, OrderStatus.REJECTED_BY_RESTAURANT,
+                        OrderStatus.RESTAURANT_TIMEOUT, OrderStatus.CANCELLED));
 
         ALLOWED_TRANSITIONS.put(OrderStatus.PAYMENT_FAILED,
                 EnumSet.of(OrderStatus.CANCELLED));
 
-        ALLOWED_TRANSITIONS.put(OrderStatus.PAID,
-                EnumSet.of(OrderStatus.CONFIRMED_BY_RESTAURANT, OrderStatus.REJECTED_BY_RESTAURANT,
-                        OrderStatus.RESTAURANT_TIMEOUT, OrderStatus.CANCELLED));
+        // Restoran onayladı, ödeme çekimi başlatılıyor
+        ALLOWED_TRANSITIONS.put(OrderStatus.CONFIRMED_BY_RESTAURANT,
+                EnumSet.of(OrderStatus.PAYMENT_CAPTURE_PENDING, OrderStatus.CANCELLED));
+
+        // Ödeme çekimi tamamlanması bekleniyor
+        ALLOWED_TRANSITIONS.put(OrderStatus.PAYMENT_CAPTURE_PENDING,
+                EnumSet.of(OrderStatus.PAID, OrderStatus.PAYMENT_FAILED));
 
         ALLOWED_TRANSITIONS.put(OrderStatus.REJECTED_BY_RESTAURANT,
                 EnumSet.of(OrderStatus.CANCELLED));
@@ -35,7 +45,8 @@ public class OrderStateMachine {
         ALLOWED_TRANSITIONS.put(OrderStatus.RESTAURANT_TIMEOUT,
                 EnumSet.of(OrderStatus.CANCELLED));
 
-        ALLOWED_TRANSITIONS.put(OrderStatus.CONFIRMED_BY_RESTAURANT,
+        // Para çekildi, restoran hazırlamaya başlayabilir
+        ALLOWED_TRANSITIONS.put(OrderStatus.PAID,
                 EnumSet.of(OrderStatus.PREPARING, OrderStatus.CANCELLED));
 
         ALLOWED_TRANSITIONS.put(OrderStatus.PREPARING,

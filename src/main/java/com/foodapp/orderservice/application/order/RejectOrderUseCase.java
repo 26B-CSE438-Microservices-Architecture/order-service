@@ -30,9 +30,13 @@ public class RejectOrderUseCase {
         if (!order.getRestaurantId().equals(restaurantId))
             throw new OrderNotBelongToUserException("Order does not belong to this restaurant");
 
+        // PAYMENT_HELD → REJECTED_BY_RESTAURANT → CANCELLED
         order.transitionTo(OrderStatus.REJECTED_BY_RESTAURANT, stateMachine, restaurantId.toString(), request.rejectReason());
         order.cancel(stateMachine, OrderCancellationReason.RESTAURANT_REJECTED, request.rejectReason(), restaurantId.toString());
         orderRepository.save(order);
+
+        // Hold'u serbest bırak (kullanıcı ücretlendirilmeyecek)
+        eventPublisher.publishPaymentHoldReleaseRequested(order);
         eventPublisher.publishOrderCancelled(order);
     }
 }

@@ -16,28 +16,36 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Payment service parayı tutamadı (yetersiz bakiye, kart reddi vb.).
+ * Order'ı PAYMENT_FAILED → CANCELLED durumuna geçir.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class PaymentFailedEventHandler {
+public class PaymentHoldFailedEventHandler {
 
     private final OrderRepository orderRepository;
     private final OrderStateMachine stateMachine;
     private final OrderEventPublisher eventPublisher;
 
-    @KafkaListener(topics = "payment.failed", groupId = "order-service")
+    @KafkaListener(topics = "payment.hold_failed", groupId = "order-service")
     public void handle(ConsumerRecord<String, Map<String, Object>> record) {
         Map<String, Object> payload = (Map<String, Object>) record.value().get("payload");
         UUID orderId = UUID.fromString((String) payload.get("orderId"));
         String failureReason = (String) payload.get("failureReason");
 
-        log.info("Payment failed for orderId={}, reason={}", orderId, failureReason);
+        log.info("Payment hold failed for orderId={}, reason={}", orderId, failureReason);
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId));
 
+        // PAYMENT_PENDING → PAYMENT_FAILED → CANCELLED
         order.markPaymentFailed();
         order.transitionTo(OrderStatus.PAYMENT_FAILED, stateMachine, "PAYMENT_SERVICE", failureReason);
+        order.cancel(stateMachine, OrderCancellationReason.PAYMENT_FAILED, failureReason, "PAYMENT_SERVICE");
         orderRepository.save(order);
+
+        eventPublisher.publishOrderCancelled(order);
     }
 }

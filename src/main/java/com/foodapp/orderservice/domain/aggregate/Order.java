@@ -149,19 +149,32 @@ public class Order {
         return paymentStatus == PaymentStatus.PAID;
     }
 
+    public boolean isHoldReleaseRequired() {
+        return paymentStatus == PaymentStatus.HELD;
+    }
+
     public void markPaymentInitiated(UUID paymentId, LocalDateTime timeoutAt) {
         this.paymentId = paymentId;
         this.paymentTimeoutAt = timeoutAt;
         this.paymentStatus = PaymentStatus.PENDING;
     }
 
-    public void markPaymentCompleted(UUID paymentId) {
+    public void markPaymentHeld(UUID paymentId) {
+        this.paymentId = paymentId;
+        this.paymentStatus = PaymentStatus.HELD;
+    }
+
+    public void markPaymentCaptured(UUID paymentId) {
         this.paymentId = paymentId;
         this.paymentStatus = PaymentStatus.PAID;
     }
 
     public void markPaymentFailed() {
         this.paymentStatus = PaymentStatus.FAILED;
+    }
+
+    public void markHoldReleased() {
+        this.paymentStatus = PaymentStatus.RELEASED;
     }
 
     public void markRefunded() {
@@ -172,7 +185,7 @@ public class Order {
         return Set.of(
                 OrderStatus.CREATED,
                 OrderStatus.PAYMENT_PENDING,
-                OrderStatus.PAID,
+                OrderStatus.PAYMENT_HELD,
                 OrderStatus.CONFIRMED_BY_RESTAURANT
         ).contains(this.status);
     }

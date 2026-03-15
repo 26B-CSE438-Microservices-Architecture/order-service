@@ -1,6 +1,7 @@
 package com.foodapp.orderservice.controller;
 
 import com.foodapp.orderservice.domain.aggregate.Order;
+import com.foodapp.orderservice.domain.enums.OrderCancellationReason;
 import com.foodapp.orderservice.domain.enums.OrderStatus;
 import com.foodapp.orderservice.domain.statemachine.OrderStateMachine;
 import com.foodapp.orderservice.dto.request.PaymentCallbackRequest;
@@ -32,18 +33,39 @@ public class InternalOrderController {
                 .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId));
 
         switch (request.status()) {
-            case "COMPLETED" -> {
-                order.markPaymentCompleted(request.paymentId());
-                order.transitionTo(OrderStatus.PAID, stateMachine, "PAYMENT_SERVICE", "Payment completed");
+            case "HOLD_CONFIRMED" -> {
+                order.markPaymentHeld(request.paymentId());
+                order.transitionTo(OrderStatus.PAYMENT_HELD, stateMachine, "PAYMENT_SERVICE", "Payment hold confirmed");
+                orderRepository.save(order);
+                eventPublisher.publishRestaurantApprovalRequested(order);
+            }
+            case "HOLD_FAILED" -> {
+                order.markPaymentFailed();
+                order.transitionTo(OrderStatus.PAYMENT_FAILED, stateMachine, "PAYMENT_SERVICE", request.failureReason());
+                order.cancel(stateMachine, OrderCancellationReason.PAYMENT_FAILED,
+                        request.failureReason(), "PAYMENT_SERVICE");
+                orderRepository.save(order);
+                eventPublisher.publishOrderCancelled(order);
+            }
+            case "CAPTURE_COMPLETED" -> {
+                order.markPaymentCaptured(request.paymentId());
+                order.transitionTo(OrderStatus.PAID, stateMachine, "PAYMENT_SERVICE", "Payment captured");
                 orderRepository.save(order);
                 eventPublisher.publishOrderConfirmed(order);
             }
-            case "FAILED" -> {
+            case "CAPTURE_FAILED" -> {
                 order.markPaymentFailed();
                 order.transitionTo(OrderStatus.PAYMENT_FAILED, stateMachine, "PAYMENT_SERVICE", request.failureReason());
+                order.cancel(stateMachine, OrderCancellationReason.PAYMENT_CAPTURE_FAILED,
+                        request.failureReason(), "PAYMENT_SERVICE");
+                orderRepository.save(order);
+                eventPublisher.publishOrderCancelled(order);
+            }
+            case "HOLD_RELEASED" -> {
+                order.markHoldReleased();
                 orderRepository.save(order);
             }
-            default -> log.warn("Unknown payment status: {}", request.status());
+            default -> log.warn("Unknown payment callback status: {}", request.status());
         }
         return ResponseEntity.ok().build();
     }
