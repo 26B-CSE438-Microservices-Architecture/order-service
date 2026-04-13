@@ -77,20 +77,30 @@ class InternalSecretFilterTest {
 
     @Test
     void shouldSkipFilterForNonInternalPaths() throws Exception {
+        // /orders/123 — filter should pass through without checking secret
         var request = new MockHttpServletRequest("GET", "/orders/123");
-        request.addHeader("X-Internal-Secret", VALID_SECRET);
+        // intentionally NO secret header
         var response = new MockHttpServletResponse();
-        var chain = new MockFilterChain();
+        var chain = mock(FilterChain.class);
 
-        // shouldNotFilter returns true for non-/internal/ paths — filter logic is skipped
-        assertThat(filter.shouldNotFilter(request)).isTrue();
+        filter.doFilter(request, response, chain);
+
+        // chain must be invoked — filter skipped for non-/internal/ paths
+        verify(chain).doFilter(request, response);
+        assertThat(response.getStatus()).isEqualTo(200);
     }
 
     @Test
-    void shouldApplyFilterForInternalPaths() throws Exception {
+    void shouldRejectInternalPathWithoutSecret() throws Exception {
+        // /internal/ path with no secret → 401, regardless of sub-path
         var request = new MockHttpServletRequest("GET", "/internal/anything");
+        var response = new MockHttpServletResponse();
+        var chain = mock(FilterChain.class);
 
-        assertThat(filter.shouldNotFilter(request)).isFalse();
+        filter.doFilter(request, response, chain);
+
+        verifyNoInteractions(chain);
+        assertThat(response.getStatus()).isEqualTo(401);
     }
 
     @Test

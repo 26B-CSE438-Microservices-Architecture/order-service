@@ -3,6 +3,7 @@ package com.foodapp.orderservice.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -31,6 +32,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({OrderNotBelongToUserException.class})
     public ResponseEntity<?> handleUnauthorized(OrderNotBelongToUserException ex) {
         return error(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> e.getField() + ": " + e.getDefaultMessage())
+                .findFirst().orElse("Validation failed");
+        return error(HttpStatus.BAD_REQUEST, message);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

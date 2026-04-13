@@ -1,13 +1,13 @@
 package com.foodapp.orderservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.foodapp.orderservice.domain.aggregate.Order;
+import com.foodapp.orderservice.config.InternalSecretFilter;
+import com.foodapp.orderservice.config.SecurityConfig;
 import com.foodapp.orderservice.domain.enums.OrderStatus;
 import com.foodapp.orderservice.domain.statemachine.OrderStateMachine;
 import com.foodapp.orderservice.dto.request.PaymentCallbackRequest;
 import com.foodapp.orderservice.event.producer.OrderEventPublisher;
 import com.foodapp.orderservice.exception.GlobalExceptionHandler;
-import com.foodapp.orderservice.exception.OrderNotFoundException;
 import com.foodapp.orderservice.repository.OrderRepository;
 import com.foodapp.orderservice.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -30,29 +30,33 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = InternalOrderController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({SecurityConfig.class, GlobalExceptionHandler.class, OrderStateMachine.class})
+@TestPropertySource(properties = {
+        "internal.secret=test-internal-secret",
+        "jwt.secret=test-secret-key-for-testing-purposes-only-256-bits-long"
+})
 class InternalOrderControllerTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
+    @Autowired InternalSecretFilter internalSecretFilter;
 
     @MockBean OrderRepository orderRepository;
-    @SpyBean OrderStateMachine stateMachine;
     @MockBean OrderEventPublisher eventPublisher;
-
-    // Required by SecurityFilterChain — mocked to be no-ops so tests focus on controller
-    @MockBean com.foodapp.orderservice.config.jwt.JwtAuthenticationFilter jwtFilter;
-    @MockBean com.foodapp.orderservice.config.InternalSecretFilter internalSecretFilter;
 
     private UUID userId;
     private UUID restaurantId;
     private UUID orderId;
+    private String secret;
 
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
         restaurantId = UUID.randomUUID();
         orderId = UUID.randomUUID();
+        // Force the exact value into the filter regardless of property loading order
+        ReflectionTestUtils.setField(internalSecretFilter, "internalSecret", "test-internal-secret");
+        secret = "test-internal-secret";
     }
 
     @Test
@@ -62,11 +66,11 @@ class InternalOrderControllerTest {
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any())).thenReturn(order);
 
-        var request = new PaymentCallbackRequest(UUID.randomUUID(), "HOLD_CONFIRMED", null);
-
         mockMvc.perform(post("/internal/orders/{id}/payment-callback", orderId)
+                        .header("X-Internal-Secret", secret)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(
+                                new PaymentCallbackRequest(UUID.randomUUID(), "HOLD_CONFIRMED", null))))
                 .andExpect(status().isOk());
 
         verify(eventPublisher).publishRestaurantApprovalRequested(order);
@@ -80,11 +84,11 @@ class InternalOrderControllerTest {
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any())).thenReturn(order);
 
-        var request = new PaymentCallbackRequest(null, "HOLD_FAILED", "Yetersiz bakiye");
-
         mockMvc.perform(post("/internal/orders/{id}/payment-callback", orderId)
+                        .header("X-Internal-Secret", secret)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(
+                                new PaymentCallbackRequest(null, "HOLD_FAILED", "Yetersiz bakiye"))))
                 .andExpect(status().isOk());
 
         verify(eventPublisher).publishOrderCancelled(order);
@@ -97,11 +101,11 @@ class InternalOrderControllerTest {
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any())).thenReturn(order);
 
-        var request = new PaymentCallbackRequest(UUID.randomUUID(), "CAPTURE_COMPLETED", null);
-
         mockMvc.perform(post("/internal/orders/{id}/payment-callback", orderId)
+                        .header("X-Internal-Secret", secret)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(
+                                new PaymentCallbackRequest(UUID.randomUUID(), "CAPTURE_COMPLETED", null))))
                 .andExpect(status().isOk());
 
         verify(eventPublisher).publishOrderConfirmed(order);
@@ -114,11 +118,11 @@ class InternalOrderControllerTest {
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any())).thenReturn(order);
 
-        var request = new PaymentCallbackRequest(null, "CAPTURE_FAILED", "Ödeme sistemi hatası");
-
         mockMvc.perform(post("/internal/orders/{id}/payment-callback", orderId)
+                        .header("X-Internal-Secret", secret)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(
+                                new PaymentCallbackRequest(null, "CAPTURE_FAILED", "Sistem hatasi"))))
                 .andExpect(status().isOk());
 
         verify(eventPublisher).publishOrderCancelled(order);
@@ -131,11 +135,11 @@ class InternalOrderControllerTest {
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any())).thenReturn(order);
 
-        var request = new PaymentCallbackRequest(null, "HOLD_RELEASED", null);
-
         mockMvc.perform(post("/internal/orders/{id}/payment-callback", orderId)
+                        .header("X-Internal-Secret", secret)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(
+                                new PaymentCallbackRequest(null, "HOLD_RELEASED", null))))
                 .andExpect(status().isOk());
 
         verify(orderRepository).save(order);
@@ -146,22 +150,29 @@ class InternalOrderControllerTest {
     void shouldReturn404WhenOrderNotFound() throws Exception {
         when(orderRepository.findById(any())).thenReturn(Optional.empty());
 
-        var request = new PaymentCallbackRequest(UUID.randomUUID(), "HOLD_CONFIRMED", null);
-
         mockMvc.perform(post("/internal/orders/{id}/payment-callback", orderId)
+                        .header("X-Internal-Secret", secret)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(
+                                new PaymentCallbackRequest(UUID.randomUUID(), "HOLD_CONFIRMED", null))))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void shouldReturn400WhenStatusIsMissing() throws Exception {
-        // @NotBlank on status field — empty string triggers validation
-        String invalidJson = "{\"status\":\"\"}";
-
+    void shouldReturn401WhenSecretIsMissing() throws Exception {
         mockMvc.perform(post("/internal/orders/{id}/payment-callback", orderId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(invalidJson))
+                        .content(objectMapper.writeValueAsString(
+                                new PaymentCallbackRequest(UUID.randomUUID(), "HOLD_CONFIRMED", null))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldReturn400WhenStatusIsBlank() throws Exception {
+        mockMvc.perform(post("/internal/orders/{id}/payment-callback", orderId)
+                        .header("X-Internal-Secret", secret)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"\"}"))
                 .andExpect(status().isBadRequest());
     }
 }
