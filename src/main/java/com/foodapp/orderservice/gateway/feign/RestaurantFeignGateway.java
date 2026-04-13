@@ -32,6 +32,8 @@ public class RestaurantFeignGateway implements RestaurantGateway {
     }
 
     @Override
+    @CircuitBreaker(name = "restaurantService", fallbackMethod = "isOpenFallback")
+    @Retry(name = "restaurantService")
     public boolean isRestaurantOpen(UUID restaurantId) {
         return feignClient.isOpen(restaurantId);
     }

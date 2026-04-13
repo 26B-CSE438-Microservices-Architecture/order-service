@@ -27,6 +27,13 @@ public class OutboxEvent {
     @Column(columnDefinition = "TEXT")
     private String payload;
 
+    private String topic;
+
     private LocalDateTime createdAt;
+
+    @Column(nullable = false)
     private boolean processed;
+
+    @Column(nullable = false)
+    private int retryCount;
 }

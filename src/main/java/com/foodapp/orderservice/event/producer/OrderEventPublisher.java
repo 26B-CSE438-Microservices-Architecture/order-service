@@ -113,16 +113,26 @@ public class OrderEventPublisher {
         return event;
     }
 
+    public void publishRefundRequested(Order order) {
+        publish("order.refund.requested", buildEvent("ORDER_REFUND_REQUESTED", order.getCorrelationId(), Map.of(
+                "orderId", order.getId(),
+                "paymentId", order.getPaymentId(),
+                "userId", order.getUserId(),
+                "totalAmount", Map.of("amount", order.getTotalAmount().getAmount(), "currency", order.getTotalAmount().getCurrency())
+        )));
+    }
+
     private void publish(String topic, Map<String, Object> event) {
         try {
-            // Artık Kafka'ya değil veritabanına Outbox kaydı atıyoruz.
             OutboxEvent outboxEvent = OutboxEvent.builder()
                     .aggregateType("ORDER")
                     .aggregateId((String) event.get("correlationId"))
                     .eventType((String) event.get("eventType"))
+                    .topic(topic)
                     .payload(objectMapper.writeValueAsString(event))
                     .createdAt(LocalDateTime.now())
                     .processed(false)
+                    .retryCount(0)
                     .build();
 
             outboxRepository.save(outboxEvent);

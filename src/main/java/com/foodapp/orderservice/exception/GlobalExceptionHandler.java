@@ -33,6 +33,16 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException ex) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<?> handleIllegalState(IllegalStateException ex) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     @ExceptionHandler({PaymentTimeoutException.class, RestaurantTimeoutException.class, RestaurantRejectedException.class})
     public ResponseEntity<?> handleBusinessTimeouts(RuntimeException ex) {
         return error(HttpStatus.GONE, ex.getMessage());

@@ -1,8 +1,10 @@
 package com.foodapp.orderservice.dto.response;
 
 import com.foodapp.orderservice.domain.aggregate.Order;
+import com.foodapp.orderservice.domain.enums.OrderCancellationReason;
 import com.foodapp.orderservice.domain.enums.OrderStatus;
 import com.foodapp.orderservice.domain.enums.OrderType;
+import com.foodapp.orderservice.domain.enums.PaymentStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -10,6 +12,7 @@ import java.util.UUID;
 public record OrderResponse(UUID orderId, OrderStatus status, OrderType orderType,
                              UUID restaurantId, MoneyResponse totalAmount, MoneyResponse deliveryFee,
                              AddressResponse deliveryAddress, String notes,
+                             PaymentStatus paymentStatus, OrderCancellationReason cancellationReason,
                              LocalDateTime estimatedDeliveryTime, LocalDateTime createdAt,
                              List<OrderItemResponse> items,
                              List<OrderStatusHistoryResponse> statusHistory) {
@@ -20,7 +23,10 @@ public record OrderResponse(UUID orderId, OrderStatus status, OrderType orderTyp
                 MoneyResponse.from(order.getTotalAmount()),
                 MoneyResponse.from(order.getDeliveryFee()),
                 AddressResponse.from(order.getDeliveryAddress()),
-                order.getNotes(), order.getEstimatedDeliveryTime(), order.getCreatedAt(),
+                order.getNotes(),
+                order.getPaymentStatus(),
+                order.getCancellationReason(),
+                order.getEstimatedDeliveryTime(), order.getCreatedAt(),
                 order.getItems().stream().map(OrderItemResponse::from).toList(),
                 order.getStatusHistory().stream().map(OrderStatusHistoryResponse::from).toList()
         );

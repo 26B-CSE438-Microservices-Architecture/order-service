@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -27,6 +28,7 @@ public class InternalOrderController {
     private final OrderEventPublisher eventPublisher;
 
     @PostMapping("/{orderId}/payment-callback")
+    @Transactional
     public ResponseEntity<Void> paymentCallback(@PathVariable UUID orderId,
                                                  @Valid @RequestBody PaymentCallbackRequest request) {
         Order order = orderRepository.findById(orderId)

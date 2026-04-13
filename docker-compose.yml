@@ -62,6 +62,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       PAYMENT_TIMEOUT_MINUTES: ${PAYMENT_TIMEOUT_MINUTES}
       RESTAURANT_TIMEOUT_MINUTES: ${RESTAURANT_TIMEOUT_MINUTES}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
     depends_on:
       postgres:
         condition: service_healthy

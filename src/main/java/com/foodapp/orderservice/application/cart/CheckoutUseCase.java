@@ -13,7 +13,6 @@ import com.foodapp.orderservice.dto.request.CheckoutRequest;
 import com.foodapp.orderservice.dto.response.OrderResponse;
 import com.foodapp.orderservice.event.producer.OrderEventPublisher;
 import com.foodapp.orderservice.exception.CartNotFoundException;
-import com.foodapp.orderservice.gateway.PaymentGateway;
 import com.foodapp.orderservice.gateway.RestaurantGateway;
 import com.foodapp.orderservice.repository.CartRepository;
 import com.foodapp.orderservice.repository.OrderRepository;
@@ -36,15 +35,11 @@ public class CheckoutUseCase {
     private final CartRepository cartRepository;
     private final OrderRepository orderRepository;
     private final RestaurantGateway restaurantGateway;
-    private final PaymentGateway paymentGateway;
     private final OrderStateMachine stateMachine;
     private final OrderEventPublisher eventPublisher;
 
     @Value("${order.payment-timeout-minutes:10}")
     private int paymentTimeoutMinutes;
-
-    @Value("${order.restaurant-timeout-minutes:5}")
-    private int restaurantTimeoutMinutes;
 
     @Value("${order.delivery-fee:15.00}")
     private BigDecimal defaultDeliveryFee;
@@ -127,10 +122,8 @@ public class CheckoutUseCase {
 
         // 6. Transition to PAYMENT_PENDING
         order.transitionTo(OrderStatus.PAYMENT_PENDING, stateMachine, userId.toString(), "Checkout initiated");
-        order.setRestaurantTimeoutAt(LocalDateTime.now().plusMinutes(restaurantTimeoutMinutes));
-
-        // DEĞİŞİKLİK BURADA: Artık initiatePayment senkron çağrısını KULLANMIYORUZ.
         order.setPaymentTimeoutAt(LocalDateTime.now().plusMinutes(paymentTimeoutMinutes));
+        // Not: restaurantTimeoutAt, hold onayı gelince PaymentHoldConfirmedEventHandler'da set edilir
 
         // 7. Lock cart
         cart.checkout();

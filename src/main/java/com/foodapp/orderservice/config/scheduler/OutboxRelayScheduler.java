@@ -16,28 +16,31 @@ import java.util.List;
 @Slf4j
 public class OutboxRelayScheduler {
 
-    private final OutboxEventRepository outboxRepository;
+    private static final int MAX_RETRY_COUNT = 5;
 
-    // HATA BURADAYDI: <String, String> yerine <String, Object> yaptık
+    private final OutboxEventRepository outboxRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    @Scheduled(fixedDelay = 2000) // Her 2 saniyede bir çalışır
+    @Scheduled(fixedDelay = 2000)
     @Transactional
     public void processOutbox() {
-        List<OutboxEvent> pendingEvents = outboxRepository.findByProcessedFalseOrderByCreatedAtAsc();
+        List<OutboxEvent> pendingEvents =
+                outboxRepository.findByProcessedFalseAndRetryCountLessThanOrderByCreatedAtAsc(MAX_RETRY_COUNT);
 
         for (OutboxEvent event : pendingEvents) {
             try {
-                String topic = event.getEventType().toLowerCase().replace("_", ".");
-
-                kafkaTemplate.send(topic, event.getAggregateId(), event.getPayload()).get(); // Senkron gönderim
+                kafkaTemplate.send(event.getTopic(), event.getAggregateId(), event.getPayload()).get();
 
                 event.setProcessed(true);
                 outboxRepository.save(event);
-                log.debug("Outbox event published to Kafka: {}", event.getId());
+                log.debug("Outbox event published: eventType={} topic={}", event.getEventType(), event.getTopic());
             } catch (Exception e) {
-                log.error("Failed to publish outbox event id: {}", event.getId(), e);
-                break; // Hata durumunda döngüyü kır, bir sonraki çalışmada tekrar dener
+                int newRetryCount = event.getRetryCount() + 1;
+                event.setRetryCount(newRetryCount);
+                outboxRepository.save(event);
+                log.error("Failed to publish outbox event id={} retryCount={}/{}. Will retry later.",
+                        event.getId(), newRetryCount, MAX_RETRY_COUNT, e);
+                // continue ile diğer event'ler etkilenmez
             }
         }
     }

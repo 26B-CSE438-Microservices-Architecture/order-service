@@ -9,6 +9,7 @@ import com.foodapp.orderservice.dto.response.OrderResponse;
 import com.foodapp.orderservice.dto.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +24,7 @@ public class OrderController {
     private final ListOrdersUseCase listOrdersUseCase;
     private final CancelOrderUseCase cancelOrderUseCase;
     private final ReorderUseCase reorderUseCase;
+    private final RequestRefundUseCase requestRefundUseCase;
 
     @GetMapping("/{orderId}")
     public OrderResponse getOrder(@PathVariable UUID orderId,
@@ -50,5 +52,12 @@ public class OrderController {
     public CartResponse reorder(@PathVariable UUID orderId,
                                 @AuthenticationPrincipal AuthenticatedUser user) {
         return reorderUseCase.execute(orderId, user.userId());
+    }
+
+    @PostMapping("/{orderId}/request-refund")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void requestRefund(@PathVariable UUID orderId,
+                              @AuthenticationPrincipal AuthenticatedUser user) {
+        requestRefundUseCase.execute(orderId, user.userId());
     }
 }

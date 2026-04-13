@@ -34,6 +34,10 @@ jwt:
 order:
   payment-timeout-minutes: ${PAYMENT_TIMEOUT_MINUTES:10}
   restaurant-timeout-minutes: ${RESTAURANT_TIMEOUT_MINUTES:5}
+  delivery-fee: ${ORDER_DELIVERY_FEE:15.00}
+
+internal:
+  secret: ${INTERNAL_SECRET:change-me-in-production}
 
 springdoc:
   api-docs:

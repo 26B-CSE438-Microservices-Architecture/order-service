@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.UUID;
@@ -30,6 +31,7 @@ public class PaymentHoldFailedEventHandler {
     private final OrderEventPublisher eventPublisher;
 
     @KafkaListener(topics = "payment.hold_failed", groupId = "order-service")
+    @Transactional
     public void handle(ConsumerRecord<String, Map<String, Object>> record) {
         Map<String, Object> payload = (Map<String, Object>) record.value().get("payload");
         UUID orderId = UUID.fromString((String) payload.get("orderId"));

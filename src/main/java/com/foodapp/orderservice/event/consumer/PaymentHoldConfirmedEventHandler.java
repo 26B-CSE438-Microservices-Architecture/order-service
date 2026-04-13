@@ -9,15 +9,19 @@ import com.foodapp.orderservice.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
 /**
  * Payment service parayı başarıyla tuttu (hold).
- * Order'ı PAYMENT_HELD durumuna geçir ve restorana onay bildirimi gönder.
+ * Order'ı PAYMENT_HELD durumuna geçir, restoran timeout saatini şimdi başlat,
+ * ve restorana onay bildirimi gönder.
  */
 @Component
 @RequiredArgsConstructor
@@ -28,7 +32,11 @@ public class PaymentHoldConfirmedEventHandler {
     private final OrderStateMachine stateMachine;
     private final OrderEventPublisher eventPublisher;
 
+    @Value("${order.restaurant-timeout-minutes:5}")
+    private int restaurantTimeoutMinutes;
+
     @KafkaListener(topics = "payment.hold_confirmed", groupId = "order-service")
+    @Transactional
     public void handle(ConsumerRecord<String, Map<String, Object>> record) {
         Map<String, Object> payload = (Map<String, Object>) record.value().get("payload");
         UUID orderId = UUID.fromString((String) payload.get("orderId"));
@@ -41,6 +49,10 @@ public class PaymentHoldConfirmedEventHandler {
 
         order.markPaymentHeld(paymentId);
         order.transitionTo(OrderStatus.PAYMENT_HELD, stateMachine, "PAYMENT_SERVICE", "Payment hold confirmed");
+
+        // Restoran timeout süreci hold onayından itibaren başlar (checkout anından değil)
+        order.setRestaurantTimeoutAt(LocalDateTime.now().plusMinutes(restaurantTimeoutMinutes));
+
         orderRepository.save(order);
 
         // Para tutuldu, şimdi restorana onay isteği gönder

@@ -9,7 +9,6 @@ import com.foodapp.orderservice.dto.request.AddressRequest;
 import com.foodapp.orderservice.dto.request.CheckoutRequest;
 import com.foodapp.orderservice.event.producer.OrderEventPublisher;
 import com.foodapp.orderservice.exception.CartNotFoundException;
-import com.foodapp.orderservice.gateway.PaymentGateway;
 import com.foodapp.orderservice.gateway.RestaurantGateway;
 import com.foodapp.orderservice.repository.CartRepository;
 import com.foodapp.orderservice.repository.OrderRepository;
@@ -31,7 +30,6 @@ class CheckoutUseCaseTest {
     @Mock CartRepository cartRepository;
     @Mock OrderRepository orderRepository;
     @Mock RestaurantGateway restaurantGateway;
-    @Mock PaymentGateway paymentGateway;
     @Mock OrderStateMachine stateMachine;
     @Mock OrderEventPublisher eventPublisher;
     @InjectMocks CheckoutUseCase checkoutUseCase;
