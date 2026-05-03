@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: foodapp
+  labels:
+    app.kubernetes.io/part-of: foodapp
+    app.kubernetes.io/managed-by: kubectl

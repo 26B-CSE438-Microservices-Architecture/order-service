@@ -1,0 +1,76 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: order-service-ingress
+  namespace: foodapp
+  labels:
+    app.kubernetes.io/name: order-service
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: foodapp
+  annotations:
+    # NGINX Ingress Controller ayarları
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+    # CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization, Content-Type, Idempotency-Key, X-Correlation-Id, X-Internal-Secret"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: order.foodapp.local     # /etc/hosts veya DNS'e eklenecek
+      http:
+        paths:
+          # ── API Endpoints ──
+          - path: /cart(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 8082
+          - path: /orders(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 8082
+          - path: /internal(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 8082
+
+          # ── Swagger UI & API Docs ──
+          - path: /swagger-ui(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 8082
+          - path: /v3/api-docs(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 8082
+
+          # ── Actuator (monitoring) ──
+          - path: /actuator(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 8082

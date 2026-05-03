@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: foodapp
+  labels:
+    app.kubernetes.io/name: order-service
+    app.kubernetes.io/component: config
+    app.kubernetes.io/part-of: foodapp
+data:
+  # ── Database ──
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres-service:5432/orderdb"
+  SPRING_DATASOURCE_DRIVER: "org.postgresql.Driver"
+  POSTGRES_DB: "orderdb"
+
+  # ── Kafka ──
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
+
+  # ── Inter-Service URLs ──
+  RESTAURANT_SERVICE_URL: "http://restaurant-service.foodapp.svc.cluster.local:8083"
+  PAYMENT_SERVICE_URL: "http://payment-service.foodapp.svc.cluster.local:8084"
+
+  # ── Business Logic ──
+  PAYMENT_TIMEOUT_MINUTES: "10"
+  RESTAURANT_TIMEOUT_MINUTES: "5"
+  ORDER_DELIVERY_FEE: "15.00"
+
+  # ── JPA / Flyway ──
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
+  SPRING_FLYWAY_ENABLED: "true"
+
+  # ── Actuator ──
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,metrics,prometheus"
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "always"
+
+  # ── Logging ──
+  LOGGING_LEVEL_COM_FOODAPP: "INFO"
