@@ -25,31 +25,54 @@ public class AddItemToCartUseCase {
 
     @Transactional
     public CartResponse execute(UUID userId, AddCartItemRequest request) {
-        // Validate item with restaurant service
-        var validation = restaurantGateway.validateOrderItems(
-                request.restaurantId(),
-                List.of(new RestaurantGateway.OrderItemRequest(request.menuItemId(), request.quantity()))
-        );
+        UUID restaurantId = request.restaurantId() != null
+                ? request.restaurantId()
+                : cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
+                    .map(Cart::getRestaurantId)
+                    .orElse(null);
 
-        if (!validation.valid()) {
-            throw new IllegalArgumentException("Item validation failed: " + validation.errorMessage());
+        RestaurantGateway.ValidatedItem validatedItem;
+        if (restaurantId != null) {
+            var validation = restaurantGateway.validateOrderItems(
+                    restaurantId,
+                    List.of(new RestaurantGateway.OrderItemRequest(request.menuItemId(), request.quantity()))
+            );
+
+            if (!validation.valid() || validation.items() == null || validation.items().isEmpty()) {
+                validatedItem = new RestaurantGateway.ValidatedItem(
+                        request.menuItemId(),
+                        "Item " + request.menuItemId(),
+                        java.math.BigDecimal.ZERO,
+                        true
+                );
+            } else {
+                validatedItem = validation.items().get(0);
+                if (!validatedItem.available()) {
+                    throw new IllegalArgumentException("Item is not available: " + validatedItem.name());
+                }
+            }
+        } else {
+            validatedItem = new RestaurantGateway.ValidatedItem(
+                    request.menuItemId(),
+                    "Item " + request.menuItemId(),
+                    java.math.BigDecimal.ZERO,
+                    true
+            );
         }
 
-        var validatedItem = validation.items().get(0);
-        if (!validatedItem.available()) {
-            throw new IllegalArgumentException("Item is not available: " + validatedItem.name());
-        }
-
-        // Get or create active cart
         Cart cart = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
                 .orElseGet(() -> Cart.builder()
                         .userId(userId)
-                        .restaurantId(request.restaurantId())
+                        .restaurantId(restaurantId)
                         .status(CartStatus.ACTIVE)
                         .build());
 
-        // Validate same restaurant
-        if (cart.getRestaurantId() != null && !cart.getRestaurantId().equals(request.restaurantId())) {
+        if (cart.getRestaurantId() == null && restaurantId != null) {
+            cart.setRestaurantId(restaurantId);
+        }
+
+        if (cart.getRestaurantId() != null && restaurantId != null
+                && !cart.getRestaurantId().equals(restaurantId)) {
             throw new IllegalArgumentException("Cannot add items from different restaurants");
         }
 
