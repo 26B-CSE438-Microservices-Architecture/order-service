@@ -14,7 +14,7 @@ jobs:
           cd /home/cse438/trendyol-clone/repos/order-service
           git fetch origin
           git checkout main
-          git pull origin main
+          git reset --hard origin/main
       - name: Docker Build and Up
         run: |
           cd /home/cse438/trendyol-clone
