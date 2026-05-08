@@ -57,6 +57,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.GONE, ex.getMessage());
     }
 
+    @ExceptionHandler(java.util.NoSuchElementException.class)
+    public ResponseEntity<?> handleNotFound(java.util.NoSuchElementException ex) {
+        return error(HttpStatus.NOT_FOUND, "Required resource or item not found");
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGeneral(Exception ex) {
         log.error("Unhandled exception", ex);

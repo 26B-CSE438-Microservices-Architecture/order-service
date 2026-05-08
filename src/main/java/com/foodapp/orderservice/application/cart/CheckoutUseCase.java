@@ -72,12 +72,13 @@ public class CheckoutUseCase {
             throw new IllegalArgumentException("Order validation failed: " + validation.errorMessage());
 
         // 4. Build order items with validated prices (snapshot)
-        Money deliveryFee = Money.of(defaultDeliveryFee, "TRY"); // 1. Maddede eklediğimiz BigDecimal kullanılıyor
+        Money deliveryFee = Money.of(defaultDeliveryFee, "TRY");
 
         var orderItems = cart.getItems().stream().map(cartItem -> {
             var validated = validation.items().stream()
                     .filter(v -> v.menuItemId().equals(cartItem.getMenuItemId()))
-                    .findFirst().orElseThrow();
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Ürün doğrulanamadı veya restoran menüsünde bulunamadı: " + cartItem.getMenuItemId()));
             Money unitPrice = Money.of(validated.price(), "TRY");
             Money totalPrice = Money.of(validated.price().multiply(BigDecimal.valueOf(cartItem.getQuantity())), "TRY");
 

@@ -23,6 +23,10 @@ public class OrderItem {
     @Column(name = "order_id", insertable = false, updatable = false)
     private UUID orderId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    private com.foodapp.orderservice.domain.aggregate.Order order;
+
     @Column(nullable = false)
     private UUID menuItemId;
 

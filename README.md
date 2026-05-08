@@ -196,7 +196,7 @@ CREATED
 | `SPRING_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker adresi |
 | `JWT_SECRET` | *(zorunlu)* | JWT imzalama anahtarı (min 256-bit) |
 | `INTERNAL_SECRET` | `change-me-in-production` | Internal servisler arası paylaşılan gizli anahtar |
-| `RESTAURANT_SERVICE_URL` | `http://restaurant-service:8083` | Restaurant Service URL |
+| `RESTAURANT_SERVICE_URL` | `http://restaurant-service:5000` | Restaurant Service URL |
 | `PAYMENT_SERVICE_URL` | `http://payment-service:8084` | Payment Service URL |
 | `PAYMENT_TIMEOUT_MINUTES` | `10` | Ödeme bekleme süresi (dakika) |
 | `RESTAURANT_TIMEOUT_MINUTES` | `5` | Restoran onay bekleme süresi (dakika) |

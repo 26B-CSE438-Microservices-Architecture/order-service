@@ -18,10 +18,10 @@ public class UpdateCartItemUseCase {
     private final CartRepository cartRepository;
 
     @Transactional
-    public CartResponse execute(UUID userId, UUID itemId, UpdateCartItemRequest request) {
+    public CartResponse execute(UUID userId, UUID menuItemId, UpdateCartItemRequest request) {
         var cart = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
                 .orElseThrow(() -> new CartNotFoundException("Active cart not found"));
-        cart.updateItemQuantity(itemId, request.quantity());
+        cart.updateItemQuantity(menuItemId, request.quantity());
         return CartResponse.from(cartRepository.save(cart));
     }
 }

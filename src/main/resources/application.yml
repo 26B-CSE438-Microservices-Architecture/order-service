@@ -25,7 +25,7 @@ spring:
 
 restaurant:
   service:
-    url: ${RESTAURANT_SERVICE_URL:http://restaurant-service:8083}
+    url: ${RESTAURANT_SERVICE_URL:http://restaurant-service:5000}
 
 payment:
   service:

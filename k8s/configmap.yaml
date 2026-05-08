@@ -17,7 +17,7 @@ data:
   SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
 
   # ── Inter-Service URLs ──
-  RESTAURANT_SERVICE_URL: "http://restaurant-service.foodapp.svc.cluster.local:8083"
+  RESTAURANT_SERVICE_URL: "http://restaurant-service.foodapp.svc.cluster.local:5000"
   PAYMENT_SERVICE_URL: "http://payment-service.foodapp.svc.cluster.local:8084"
 
   # ── Business Logic ──

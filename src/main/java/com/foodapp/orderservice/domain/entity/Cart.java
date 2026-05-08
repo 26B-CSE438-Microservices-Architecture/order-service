@@ -41,8 +41,7 @@ public class Cart {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id")
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<CartItem> items = new ArrayList<>();
 
@@ -51,15 +50,18 @@ public class Cart {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         if (status == null) status = CartStatus.ACTIVE;
+        syncItemOwnership();
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+        syncItemOwnership();
     }
 
     public void addItem(CartItem item) {
         validateActive();
+        item.setCart(this);
         items.stream()
                 .filter(i -> i.getMenuItemId().equals(item.getMenuItemId()))
                 .findFirst()
@@ -72,15 +74,15 @@ public class Cart {
                 );
     }
 
-    public void removeItem(UUID itemId) {
+    public void removeItem(UUID menuItemId) {
         validateActive();
-        items.removeIf(i -> i.getId().equals(itemId));
+        items.removeIf(i -> i.getMenuItemId().equals(menuItemId));
     }
 
-    public void updateItemQuantity(UUID itemId, int quantity) {
+    public void updateItemQuantity(UUID menuItemId, int quantity) {
         validateActive();
         items.stream()
-                .filter(i -> i.getId().equals(itemId))
+                .filter(i -> i.getMenuItemId().equals(menuItemId))
                 .findFirst()
                 .ifPresent(item -> {
                     item.setQuantity(quantity);
@@ -112,5 +114,9 @@ public class Cart {
         if (status != CartStatus.ACTIVE) {
             throw new IllegalStateException("Cart is not active. Current status: " + status);
         }
+    }
+
+    private void syncItemOwnership() {
+        items.forEach(item -> item.setCart(this));
     }
 }

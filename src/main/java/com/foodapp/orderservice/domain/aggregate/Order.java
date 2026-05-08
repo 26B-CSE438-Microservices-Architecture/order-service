@@ -103,13 +103,11 @@ public class Order {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<OrderStatusHistory> statusHistory = new ArrayList<>();
 
@@ -118,11 +116,13 @@ public class Order {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         if (status == null) status = OrderStatus.CREATED;
+        syncChildOwnership();
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+        syncChildOwnership();
     }
 
     public void transitionTo(OrderStatus newStatus, OrderStateMachine stateMachine, String changedBy, String reason) {
@@ -135,6 +135,7 @@ public class Order {
                 .changedBy(changedBy)
                 .reason(reason)
                 .build();
+        history.setOrder(this);
         this.statusHistory.add(history);
         this.status = newStatus;
     }
@@ -188,5 +189,10 @@ public class Order {
                 OrderStatus.PAYMENT_HELD,
                 OrderStatus.CONFIRMED_BY_RESTAURANT
         ).contains(this.status);
+    }
+
+    private void syncChildOwnership() {
+        items.forEach(item -> item.setOrder(this));
+        statusHistory.forEach(history -> history.setOrder(this));
     }
 }

@@ -10,6 +10,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "order_status_history")
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -22,6 +23,10 @@ public class OrderStatusHistory {
 
     @Column(name = "order_id", insertable = false, updatable = false)
     private UUID orderId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    private com.foodapp.orderservice.domain.aggregate.Order order;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus fromStatus;

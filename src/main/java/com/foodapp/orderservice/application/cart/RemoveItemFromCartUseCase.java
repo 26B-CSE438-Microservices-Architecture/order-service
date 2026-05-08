@@ -17,10 +17,10 @@ public class RemoveItemFromCartUseCase {
     private final CartRepository cartRepository;
 
     @Transactional
-    public CartResponse execute(UUID userId, UUID itemId) {
+    public CartResponse execute(UUID userId, UUID menuItemId) {
         var cart = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
                 .orElseThrow(() -> new CartNotFoundException("Active cart not found"));
-        cart.removeItem(itemId);
+        cart.removeItem(menuItemId);
         return CartResponse.from(cartRepository.save(cart));
     }
 }

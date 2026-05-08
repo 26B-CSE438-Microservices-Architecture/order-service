@@ -23,6 +23,10 @@ public class CartItem {
     @Column(name = "cart_id", insertable = false, updatable = false)
     private UUID cartId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cart_id", nullable = false)
+    private Cart cart;
+
     @Column(nullable = false)
     private UUID menuItemId;
 
