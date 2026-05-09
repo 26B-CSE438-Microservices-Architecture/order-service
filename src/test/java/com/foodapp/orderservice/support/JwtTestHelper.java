@@ -12,9 +12,17 @@ public class JwtTestHelper {
     public static final String TEST_SECRET = "test-secret-key-for-testing-purposes-only-256-bits-long";
 
     public static String bearerToken(UUID userId, UserRole role) {
-        String token = Jwts.builder()
+        return bearerToken(userId, role, null);
+    }
+
+    public static String bearerToken(UUID userId, UserRole role, UUID restaurantId) {
+        var builder = Jwts.builder()
                 .setSubject(userId.toString())
-                .claim("role", role.name())
+                .claim("role", role.name());
+        if (restaurantId != null) {
+            builder.claim("restaurant_id", restaurantId.toString());
+        }
+        String token = builder
                 .signWith(Keys.hmacShaKeyFor(TEST_SECRET.getBytes(StandardCharsets.UTF_8)))
                 .compact();
         return "Bearer " + token;

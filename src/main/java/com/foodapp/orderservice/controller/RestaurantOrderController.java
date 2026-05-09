@@ -30,14 +30,14 @@ public class RestaurantOrderController {
                                                             @RequestParam(required = false) OrderStatus status,
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "20") int size) {
-        return listOrdersUseCase.forRestaurant(user.userId(), status, page, size);
+        return listOrdersUseCase.forRestaurant(user.restaurantId(), status, page, size);
     }
 
     @PatchMapping("/{orderId}/confirm")
     public void confirm(@PathVariable UUID orderId,
                         @AuthenticationPrincipal AuthenticatedUser user,
                         @RequestBody(required = false) ConfirmOrderRequest request) {
-        confirmOrderUseCase.execute(orderId, user.userId(),
+        confirmOrderUseCase.execute(orderId, user.restaurantId(),
                 request != null ? request : new ConfirmOrderRequest(null));
     }
 
@@ -45,13 +45,13 @@ public class RestaurantOrderController {
     public void reject(@PathVariable UUID orderId,
                        @AuthenticationPrincipal AuthenticatedUser user,
                        @Valid @RequestBody RejectOrderRequest request) {
-        rejectOrderUseCase.execute(orderId, user.userId(), request);
+        rejectOrderUseCase.execute(orderId, user.restaurantId(), request);
     }
 
     @PatchMapping("/{orderId}/status")
     public void updateStatus(@PathVariable UUID orderId,
                               @AuthenticationPrincipal AuthenticatedUser user,
                               @Valid @RequestBody UpdateOrderStatusRequest request) {
-        updateStatusUseCase.execute(orderId, user.userId(), request);
+        updateStatusUseCase.execute(orderId, user.restaurantId(), request);
     }
 }
