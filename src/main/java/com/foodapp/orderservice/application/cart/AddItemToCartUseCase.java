@@ -38,7 +38,12 @@ public class AddItemToCartUseCase {
                     List.of(new RestaurantGateway.OrderItemRequest(request.menuItemId(), request.quantity()))
             );
 
-            if (!validation.valid() || validation.items() == null || validation.items().isEmpty()) {
+            if (!validation.valid()) {
+                String errorMsg = validation.errorMessage() != null ? validation.errorMessage() : "Unknown error";
+                throw new IllegalArgumentException("Item validation failed: " + errorMsg);
+            }
+
+            if (validation.items() == null || validation.items().isEmpty()) {
                 validatedItem = new RestaurantGateway.ValidatedItem(
                         request.menuItemId(),
                         "Item " + request.menuItemId(),

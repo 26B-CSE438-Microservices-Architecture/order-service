@@ -53,7 +53,7 @@ class CartTest {
     void shouldRemoveItemById() {
         CartItem item = TestFixtures.buildCartItem(UUID.randomUUID());
         cart.addItem(item);
-        cart.removeItem(item.getId());
+        cart.removeItem(item.getMenuItemId());
         assertThat(cart.getItems()).isEmpty();
     }
 
