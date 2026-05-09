@@ -13,9 +13,9 @@ data:
   SPRING_DATASOURCE_DRIVER: "org.postgresql.Driver"
   POSTGRES_DB: "orderdb"
 
-  # ── Kafka ──
-  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
-
+  # ── RabbitMQ ──
+  SPRING_RABBITMQ_HOST: "rabbitmq-service"
+  SPRING_RABBITMQ_PORT: "5672"
   # ── Inter-Service URLs ──
   RESTAURANT_SERVICE_URL: "http://restaurant-service.foodapp.svc.cluster.local:5000"
   PAYMENT_SERVICE_URL: "http://payment-service.foodapp.svc.cluster.local:8084"

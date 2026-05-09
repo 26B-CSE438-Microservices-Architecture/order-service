@@ -46,18 +46,18 @@ spec:
             limits:
               memory: "64Mi"
               cpu: "100m"
-        - name: wait-for-kafka
+        - name: wait-for-rabbitmq
           image: busybox:1.36
           command:
             - sh
             - -c
             - |
-              echo "Kafka bekleniyor..."
-              until nc -z kafka-service 9092; do
-                echo "Kafka henuz hazir degil, 3s bekleniyor..."
+              echo "RabbitMQ bekleniyor..."
+              until nc -z rabbitmq-service 5672; do
+                echo "RabbitMQ henuz hazir degil, 3s bekleniyor..."
                 sleep 3
               done
-              echo "Kafka hazir!"
+              echo "RabbitMQ hazir!"
           resources:
             requests:
               memory: "32Mi"

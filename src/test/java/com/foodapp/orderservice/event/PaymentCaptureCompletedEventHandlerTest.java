@@ -7,7 +7,6 @@ import com.foodapp.orderservice.event.consumer.PaymentCaptureCompletedEventHandl
 import com.foodapp.orderservice.event.producer.OrderEventPublisher;
 import com.foodapp.orderservice.repository.OrderRepository;
 import com.foodapp.orderservice.support.TestFixtures;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,7 +14,6 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -65,11 +63,10 @@ class PaymentCaptureCompletedEventHandlerTest {
         verify(eventPublisher).publishOrderConfirmed(order);
     }
 
-    private ConsumerRecord<String, Map<String, Object>> buildRecord(UUID orderId, UUID paymentId) {
-        return new ConsumerRecord<>("payment.capture_completed", 0, 0L, "key",
-                Map.of("payload", Map.of(
-                        "orderId", orderId.toString(),
-                        "paymentId", paymentId.toString()
-                )));
+    private Map<String, Object> buildRecord(UUID orderId, UUID paymentId) {
+            return Map.of("payload", Map.of(
+                    "orderId", orderId.toString(),
+                    "paymentId", paymentId.toString()
+            ));
     }
 }

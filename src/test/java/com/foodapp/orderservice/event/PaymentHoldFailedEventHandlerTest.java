@@ -7,7 +7,6 @@ import com.foodapp.orderservice.event.consumer.PaymentHoldFailedEventHandler;
 import com.foodapp.orderservice.event.producer.OrderEventPublisher;
 import com.foodapp.orderservice.repository.OrderRepository;
 import com.foodapp.orderservice.support.TestFixtures;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -66,11 +65,10 @@ class PaymentHoldFailedEventHandlerTest {
         verify(eventPublisher, never()).publishPaymentHoldReleaseRequested(any());
     }
 
-    private ConsumerRecord<String, Map<String, Object>> buildRecord(UUID orderId, String failureReason) {
-        return new ConsumerRecord<>("payment.hold_failed", 0, 0L, "key",
-                Map.of("payload", Map.of(
-                        "orderId", orderId.toString(),
-                        "failureReason", failureReason
-                )));
+    private Map<String, Object> buildRecord(UUID orderId, String failureReason) {
+        return Map.of("payload", Map.of(
+                "orderId", orderId.toString(),
+                "failureReason", failureReason
+        ));
     }
 }

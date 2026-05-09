@@ -18,7 +18,7 @@ import java.util.UUID;
 @Slf4j
 public class OrderEventPublisher {
 
-    // KAFKA TEMPLATE SİLİNDİ, YERİNE OUTBOX GELDİ
+    
     private final OutboxEventRepository outboxRepository;
     private final ObjectMapper objectMapper;
 

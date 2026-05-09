@@ -8,9 +8,9 @@ import com.foodapp.orderservice.exception.OrderNotFoundException;
 import com.foodapp.orderservice.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,10 +35,10 @@ public class PaymentHoldConfirmedEventHandler {
     @Value("${order.restaurant-timeout-minutes:5}")
     private int restaurantTimeoutMinutes;
 
-    @KafkaListener(topics = "payment.hold_confirmed", groupId = "order-service")
+    @RabbitListener(queues = "payment.capture_completed.queue")
     @Transactional
-    public void handle(ConsumerRecord<String, Map<String, Object>> record) {
-        Map<String, Object> payload = (Map<String, Object>) record.value().get("payload");
+    public void handle(@Payload Map<String, Object> event) {
+        Map<String, Object> payload = (Map<String, Object>) event.get("payload");
         UUID orderId = UUID.fromString((String) payload.get("orderId"));
         UUID paymentId = UUID.fromString((String) payload.get("paymentId"));
 

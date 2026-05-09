@@ -4,7 +4,7 @@ import com.foodapp.orderservice.domain.entity.OutboxEvent;
 import com.foodapp.orderservice.repository.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,8 +19,7 @@ public class OutboxRelayScheduler {
     private static final int MAX_RETRY_COUNT = 5;
 
     private final OutboxEventRepository outboxRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
-
+    private final RabbitTemplate rabbitTemplate;
     @Scheduled(fixedDelay = 2000)
     @Transactional
     public void processOutbox() {
@@ -29,7 +28,7 @@ public class OutboxRelayScheduler {
 
         for (OutboxEvent event : pendingEvents) {
             try {
-                kafkaTemplate.send(event.getTopic(), event.getAggregateId(), event.getPayload()).get();
+                rabbitTemplate.convertAndSend(event.getTopic(), event.getPayload());
 
                 event.setProcessed(true);
                 outboxRepository.save(event);

@@ -67,25 +67,17 @@ Write-Host "  PostgreSQL pod'unun hazir olmasi bekleniyor..." -ForegroundColor Y
 kubectl rollout status deployment/postgres -n $NAMESPACE --timeout=120s
 Write-Ok "PostgreSQL hazir."
 
-Write-Step "4/7 — Zookeeper deploy ediliyor..."
-kubectl apply -f "$K8S_DIR\zookeeper-deployment.yaml"
-Write-Host "  Zookeeper pod'unun hazir olmasi bekleniyor..." -ForegroundColor Yellow
-kubectl rollout status deployment/zookeeper -n $NAMESPACE --timeout=120s
-Write-Ok "Zookeeper hazir."
+Write-Step "4/7 — RabbitMQ deploy ediliyor..."
+kubectl apply -f "$K8S_DIR\rabbitmq-deployment.yaml"
+Write-Ok "RabbitMQ hazir."
 
-Write-Step "5/7 — Kafka deploy ediliyor..."
-kubectl apply -f "$K8S_DIR\kafka-deployment.yaml"
-Write-Host "  Kafka pod'unun hazir olmasi bekleniyor..." -ForegroundColor Yellow
-kubectl rollout status statefulset/kafka -n $NAMESPACE --timeout=180s
-Write-Ok "Kafka hazir."
-
-Write-Step "6/7 — Order Service deploy ediliyor..."
+Write-Step "5/7 — Order Service deploy ediliyor..."
 kubectl apply -f "$K8S_DIR\order-service-deployment.yaml"
 Write-Host "  Order Service pod'larinin hazir olmasi bekleniyor..." -ForegroundColor Yellow
 kubectl rollout status deployment/order-service -n $NAMESPACE --timeout=300s
 Write-Ok "Order Service hazir."
 
-Write-Step "7/7 — Ingress, HPA ve NetworkPolicy uygulaniyor..."
+Write-Step "6/7 — Ingress, HPA ve NetworkPolicy uygulaniyor..."
 kubectl apply -f "$K8S_DIR\ingress.yaml"
 kubectl apply -f "$K8S_DIR\hpa.yaml"
 kubectl apply -f "$K8S_DIR\network-policy.yaml"

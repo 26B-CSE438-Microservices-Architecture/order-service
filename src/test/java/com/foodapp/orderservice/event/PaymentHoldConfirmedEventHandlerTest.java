@@ -8,7 +8,6 @@ import com.foodapp.orderservice.event.producer.OrderEventPublisher;
 import com.foodapp.orderservice.exception.OrderNotFoundException;
 import com.foodapp.orderservice.repository.OrderRepository;
 import com.foodapp.orderservice.support.TestFixtures;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -83,11 +82,10 @@ class PaymentHoldConfirmedEventHandlerTest {
         verify(orderRepository).save(order);
     }
 
-    private ConsumerRecord<String, Map<String, Object>> buildRecord(UUID orderId, UUID paymentId) {
-        return new ConsumerRecord<>("payment.hold_confirmed", 0, 0L, "key",
-                Map.of("payload", Map.of(
-                        "orderId", orderId.toString(),
-                        "paymentId", paymentId.toString()
-                )));
+    private Map<String, Object> buildRecord(UUID orderId, UUID paymentId) {
+        return Map.of("payload", Map.of(
+                "orderId", orderId.toString(),
+                "paymentId", paymentId.toString()
+        ));
     }
 }

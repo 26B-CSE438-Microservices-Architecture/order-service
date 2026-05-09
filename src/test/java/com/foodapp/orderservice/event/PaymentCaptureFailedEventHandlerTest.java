@@ -7,7 +7,6 @@ import com.foodapp.orderservice.event.consumer.PaymentCaptureFailedEventHandler;
 import com.foodapp.orderservice.event.producer.OrderEventPublisher;
 import com.foodapp.orderservice.repository.OrderRepository;
 import com.foodapp.orderservice.support.TestFixtures;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -65,8 +64,7 @@ class PaymentCaptureFailedEventHandlerTest {
         verify(orderRepository).save(order);
     }
 
-    private ConsumerRecord<String, Map<String, Object>> buildRecord(UUID orderId, String reason) {
-        return new ConsumerRecord<>("payment.capture_failed", 0, 0L, "key",
-                Map.of("payload", Map.of("orderId", orderId.toString(), "failureReason", reason)));
+    private Map<String, Object> buildRecord(UUID orderId, String reason) {
+        return Map.of("payload", Map.of("orderId", orderId.toString(), "failureReason", reason));
     }
 }

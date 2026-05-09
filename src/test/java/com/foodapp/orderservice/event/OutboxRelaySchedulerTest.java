@@ -5,17 +5,14 @@ import com.foodapp.orderservice.domain.entity.OutboxEvent;
 import com.foodapp.orderservice.repository.OutboxEventRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -25,7 +22,7 @@ import static org.mockito.Mockito.*;
 class OutboxRelaySchedulerTest {
 
     @Mock OutboxEventRepository outboxRepository;
-    @Mock KafkaTemplate<String, Object> kafkaTemplate;
+    @Mock RabbitTemplate rabbitTemplate;
     @InjectMocks OutboxRelayScheduler scheduler;
 
     @Test
@@ -34,8 +31,8 @@ class OutboxRelaySchedulerTest {
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThanOrderByCreatedAtAsc(5))
                 .thenReturn(List.of(event));
 
-        var future = CompletableFuture.completedFuture(null);
-        doReturn(future).when(kafkaTemplate).send(anyString(), anyString(), anyString());
+        // BURASI DEĞİŞTİ: void metot olduğu için doNothing() kullanıyoruz
+        doNothing().when(rabbitTemplate).convertAndSend(anyString(), anyString());
 
         scheduler.processOutbox();
 
@@ -44,12 +41,12 @@ class OutboxRelaySchedulerTest {
     }
 
     @Test
-    void shouldIncrementRetryCountOnKafkaFailure() {
+    void shouldIncrementRetryCountOnRabbitMQFailure() {
         var event = buildEvent("order.confirmed", 0);
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThanOrderByCreatedAtAsc(5))
                 .thenReturn(List.of(event));
-        when(kafkaTemplate.send(anyString(), anyString(), anyString()))
-                .thenThrow(new RuntimeException("Kafka bağlantı hatası"));
+        doThrow(new RuntimeException("RabbitMQ bağlantı hatası"))
+                .when(rabbitTemplate).convertAndSend(anyString(), anyString());
 
         scheduler.processOutbox();
 
@@ -67,15 +64,14 @@ class OutboxRelaySchedulerTest {
                 .thenReturn(List.of(failingEvent, successEvent));
 
         // ilk event hata verir
-        when(kafkaTemplate.send(eq("order.confirmed"), anyString(), anyString()))
-                .thenThrow(new RuntimeException("İlk event hata"));
-        // ikinci event başarılı
-        var future = CompletableFuture.completedFuture(null);
-        doReturn(future).when(kafkaTemplate).send(eq("order.cancelled"), anyString(), anyString());
+        doThrow(new RuntimeException("İlk event hata"))
+                .when(rabbitTemplate).convertAndSend(eq("order.confirmed"), anyString());
+        
+        // BURASI DEĞİŞTİ: ikinci event başarılı (void metot)
+        doNothing().when(rabbitTemplate).convertAndSend(eq("order.cancelled"), anyString());
 
         scheduler.processOutbox();
 
-        // Her iki event de save edilmeli (biri başarısız retryCount++ ile, diğeri processed=true)
         verify(outboxRepository, times(2)).save(any());
         assertThat(failingEvent.isProcessed()).isFalse();
         assertThat(successEvent.isProcessed()).isTrue();
@@ -89,7 +85,7 @@ class OutboxRelaySchedulerTest {
 
         scheduler.processOutbox();
 
-        verify(kafkaTemplate, never()).send(anyString(), anyString(), anyString());
+        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString());
     }
 
     private OutboxEvent buildEvent(String topic, int retryCount) {

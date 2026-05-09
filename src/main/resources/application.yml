@@ -20,8 +20,11 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-  kafka:
-    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
 
 restaurant:
   service:
@@ -60,6 +63,6 @@ management:
 logging:
   level:
     com.foodapp.orderservice: DEBUG
-    org.springframework.kafka: INFO
+    org.springframework.amqp: INFO
   pattern:
     console: "%d{HH:mm:ss} [%thread] %-5level [corrId=%X{correlationId:-—} reqId=%X{requestId:-—}] %logger{36} - %msg%n"

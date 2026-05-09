@@ -6,7 +6,6 @@ import com.foodapp.orderservice.domain.statemachine.OrderStateMachine;
 import com.foodapp.orderservice.event.consumer.PaymentRefundedEventHandler;
 import com.foodapp.orderservice.repository.OrderRepository;
 import com.foodapp.orderservice.support.TestFixtures;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -62,8 +61,7 @@ class PaymentRefundedEventHandlerTest {
         verify(orderRepository).save(order);
     }
 
-    private ConsumerRecord<String, Map<String, Object>> buildRecord(UUID orderId) {
-        return new ConsumerRecord<>("payment.refunded", 0, 0L, "key",
-                Map.of("payload", Map.of("orderId", orderId.toString())));
+    private Map<String, Object> buildRecord(UUID orderId) {
+        return Map.of("payload", Map.of("orderId", orderId.toString()));
     }
 }

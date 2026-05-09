@@ -19,50 +19,7 @@ spec:
         - protocol: TCP
           port: 5432
 ---
-# ── Kafka: Sadece order-service ve zookeeper'dan ──
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: kafka-network-policy
-  namespace: foodapp
-spec:
-  podSelector:
-    matchLabels:
-      app: kafka
-  policyTypes:
-    - Ingress
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: order-service
-        - podSelector:
-            matchLabels:
-              app: zookeeper
-      ports:
-        - protocol: TCP
-          port: 9092
----
-# ── Zookeeper: Sadece kafka'dan ──
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: zookeeper-network-policy
-  namespace: foodapp
-spec:
-  podSelector:
-    matchLabels:
-      app: zookeeper
-  policyTypes:
-    - Ingress
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: kafka
-      ports:
-        - protocol: TCP
-          port: 2181
+
 ---
 # ── Order Service: Ingress + diğer servislerden ──
 apiVersion: networking.k8s.io/v1
@@ -92,10 +49,10 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app: kafka
+              app: rabbitmq
       ports:
         - protocol: TCP
-          port: 9092
+          port: 5672
     # DNS çözümleme
     - to: []
       ports:

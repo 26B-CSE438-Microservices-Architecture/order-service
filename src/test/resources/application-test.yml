@@ -9,8 +9,9 @@ spring:
       ddl-auto: create-drop
     show-sql: false
     database-platform: org.hibernate.dialect.H2Dialect
-  kafka:
-    bootstrap-servers: localhost:9092
+  rabbitmq:
+    host: localhost
+    port: 5672
 
 jwt:
   secret: test-secret-key-for-testing-purposes-only-256-bits-long
