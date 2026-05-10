@@ -44,6 +44,8 @@ public class KafkaConfig {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, HashMap.class.getName());
+        props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
         // Servis kesintisi sırasında gelen mesajları kaçırmamak için
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         // Manuel commit: @Transactional handler başarılı commit'ten sonra offset commit edilir

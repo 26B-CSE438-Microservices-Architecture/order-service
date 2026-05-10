@@ -40,7 +40,7 @@ public class PaymentHoldConfirmedEventHandler {
     public void handle(ConsumerRecord<String, Map<String, Object>> record) {
         Map<String, Object> payload = (Map<String, Object>) record.value().get("payload");
         UUID orderId = UUID.fromString((String) payload.get("orderId"));
-        UUID paymentId = UUID.fromString((String) payload.get("paymentId"));
+        UUID paymentId = PaymentEventPayloads.paymentIdFrom(payload.get("paymentId"));
 
         log.info("Payment hold confirmed for orderId={}", orderId);
 

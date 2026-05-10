@@ -55,7 +55,6 @@ public class AddItemToCartUseCase {
 
         Money unitPrice = Money.of(validatedItem.price(), "TRY");
         CartItem item = CartItem.builder()
-                .cartId(cart.getId())
                 .menuItemId(request.menuItemId())
                 .menuItemName(validatedItem.name())
                 .unitPrice(unitPrice)

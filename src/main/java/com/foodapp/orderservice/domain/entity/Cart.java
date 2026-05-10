@@ -41,8 +41,7 @@ public class Cart {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id")
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<CartItem> items = new ArrayList<>();
 
@@ -51,11 +50,13 @@ public class Cart {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         if (status == null) status = CartStatus.ACTIVE;
+        attachItems();
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+        attachItems();
     }
 
     public void addItem(CartItem item) {
@@ -68,7 +69,10 @@ public class Cart {
                             existing.setQuantity(existing.getQuantity() + item.getQuantity());
                             existing.recalculateTotal();
                         },
-                        () -> items.add(item)
+                        () -> {
+                            item.setCart(this);
+                            items.add(item);
+                        }
                 );
     }
 
@@ -112,5 +116,9 @@ public class Cart {
         if (status != CartStatus.ACTIVE) {
             throw new IllegalStateException("Cart is not active. Current status: " + status);
         }
+    }
+
+    private void attachItems() {
+        items.forEach(item -> item.setCart(this));
     }
 }

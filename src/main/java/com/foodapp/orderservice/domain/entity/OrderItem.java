@@ -1,5 +1,6 @@
 package com.foodapp.orderservice.domain.entity;
 
+import com.foodapp.orderservice.domain.aggregate.Order;
 import com.foodapp.orderservice.domain.valueobject.Money;
 import jakarta.persistence.*;
 import lombok.*;
@@ -19,6 +20,10 @@ public class OrderItem {
     @UuidGenerator
     @Column(updatable = false, nullable = false)
     private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
 
     @Column(name = "order_id", insertable = false, updatable = false)
     private UUID orderId;
@@ -47,4 +52,8 @@ public class OrderItem {
     private Money totalPrice;
 
     private String specialInstructions;
+
+    public UUID getOrderId() {
+        return orderId != null ? orderId : order != null ? order.getId() : null;
+    }
 }

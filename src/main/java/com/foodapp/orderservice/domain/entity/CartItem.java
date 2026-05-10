@@ -20,8 +20,9 @@ public class CartItem {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "cart_id", insertable = false, updatable = false)
-    private UUID cartId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "cart_id", nullable = false)
+    private Cart cart;
 
     @Column(nullable = false)
     private UUID menuItemId;
@@ -47,6 +48,10 @@ public class CartItem {
     private Money totalPrice;
 
     private String specialInstructions;
+
+    public UUID getCartId() {
+        return cart != null ? cart.getId() : null;
+    }
 
     public void recalculateTotal() {
         if (unitPrice != null && quantity != null) {

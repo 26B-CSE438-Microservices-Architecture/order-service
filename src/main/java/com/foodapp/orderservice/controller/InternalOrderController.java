@@ -36,12 +36,19 @@ public class InternalOrderController {
 
         switch (request.status()) {
             case "HOLD_CONFIRMED" -> {
+                if (order.getStatus() == OrderStatus.PAYMENT_HELD) {
+                    log.info("Order {} is already in PAYMENT_HELD status, ignoring callback", orderId);
+                    return ResponseEntity.ok().build();
+                }
                 order.markPaymentHeld(request.paymentId());
                 order.transitionTo(OrderStatus.PAYMENT_HELD, stateMachine, "PAYMENT_SERVICE", "Payment hold confirmed");
                 orderRepository.save(order);
                 eventPublisher.publishRestaurantApprovalRequested(order);
             }
             case "HOLD_FAILED" -> {
+                if (order.getStatus() == OrderStatus.CANCELLED || order.getStatus() == OrderStatus.PAYMENT_FAILED) {
+                    return ResponseEntity.ok().build();
+                }
                 order.markPaymentFailed();
                 order.transitionTo(OrderStatus.PAYMENT_FAILED, stateMachine, "PAYMENT_SERVICE", request.failureReason());
                 order.cancel(stateMachine, OrderCancellationReason.PAYMENT_FAILED,
@@ -50,12 +57,18 @@ public class InternalOrderController {
                 eventPublisher.publishOrderCancelled(order);
             }
             case "CAPTURE_COMPLETED" -> {
+                if (order.getStatus() == OrderStatus.PAID) {
+                    return ResponseEntity.ok().build();
+                }
                 order.markPaymentCaptured(request.paymentId());
                 order.transitionTo(OrderStatus.PAID, stateMachine, "PAYMENT_SERVICE", "Payment captured");
                 orderRepository.save(order);
                 eventPublisher.publishOrderConfirmed(order);
             }
             case "CAPTURE_FAILED" -> {
+                if (order.getStatus() == OrderStatus.CANCELLED || order.getStatus() == OrderStatus.PAYMENT_FAILED) {
+                    return ResponseEntity.ok().build();
+                }
                 order.markPaymentFailed();
                 order.transitionTo(OrderStatus.PAYMENT_FAILED, stateMachine, "PAYMENT_SERVICE", request.failureReason());
                 order.cancel(stateMachine, OrderCancellationReason.PAYMENT_CAPTURE_FAILED,

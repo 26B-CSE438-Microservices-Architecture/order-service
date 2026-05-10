@@ -1,5 +1,6 @@
 package com.foodapp.orderservice.domain.entity;
 
+import com.foodapp.orderservice.domain.aggregate.Order;
 import com.foodapp.orderservice.domain.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -20,6 +21,10 @@ public class OrderStatusHistory {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
+
     @Column(name = "order_id", insertable = false, updatable = false)
     private UUID orderId;
 
@@ -35,4 +40,12 @@ public class OrderStatusHistory {
 
     private String changedBy;
     private String reason;
+
+    public UUID getOrderId() {
+        return orderId != null ? orderId : order != null ? order.getId() : null;
+    }
+
+    public void setOrder(Order order) {
+        this.order = order;
+    }
 }

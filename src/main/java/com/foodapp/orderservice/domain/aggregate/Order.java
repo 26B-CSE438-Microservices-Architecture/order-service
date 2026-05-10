@@ -103,13 +103,11 @@ public class Order {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<OrderStatusHistory> statusHistory = new ArrayList<>();
 
@@ -118,23 +116,25 @@ public class Order {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         if (status == null) status = OrderStatus.CREATED;
+        attachChildren();
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+        attachChildren();
     }
 
     public void transitionTo(OrderStatus newStatus, OrderStateMachine stateMachine, String changedBy, String reason) {
         stateMachine.validate(this.status, newStatus);
         OrderStatusHistory history = OrderStatusHistory.builder()
-                .orderId(this.id)
                 .fromStatus(this.status)
                 .toStatus(newStatus)
                 .changedAt(LocalDateTime.now())
                 .changedBy(changedBy)
                 .reason(reason)
                 .build();
+        history.setOrder(this);
         this.statusHistory.add(history);
         this.status = newStatus;
     }
@@ -188,5 +188,14 @@ public class Order {
                 OrderStatus.PAYMENT_HELD,
                 OrderStatus.CONFIRMED_BY_RESTAURANT
         ).contains(this.status);
+    }
+
+    private void attachChildren() {
+        if (items != null) {
+            items.forEach(item -> item.setOrder(this));
+        }
+        if (statusHistory != null) {
+            statusHistory.forEach(history -> history.setOrder(this));
+        }
     }
 }
