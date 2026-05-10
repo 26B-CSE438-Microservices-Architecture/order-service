@@ -25,7 +25,7 @@ public class PaymentHoldReleasedEventHandler {
 
     private final OrderRepository orderRepository;
 
-    @RabbitListener(queues = "payment.capture_completed.queue")
+    @RabbitListener(queues = "payment.hold_released.queue")
     @Transactional
     public void handle(@Payload Map<String, Object> event) {
         Map<String, Object> payload = (Map<String, Object>) event.get("payload");

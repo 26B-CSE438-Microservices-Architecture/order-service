@@ -30,7 +30,7 @@ public class PaymentCaptureFailedEventHandler {
     private final OrderStateMachine stateMachine;
     private final OrderEventPublisher eventPublisher;
 
-    @RabbitListener(queues = "payment.capture_completed.queue")    @Transactional
+    @RabbitListener(queues = "payment.capture_failed.queue")    @Transactional
     public void handle(@Payload Map<String, Object> event) {
         Map<String, Object> payload = (Map<String, Object>) event.get("payload");
         UUID orderId = UUID.fromString((String) payload.get("orderId"));

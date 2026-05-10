@@ -29,7 +29,7 @@ public class PaymentCaptureCompletedEventHandler {
     private final OrderStateMachine stateMachine;
     private final OrderEventPublisher eventPublisher;
 
-    @RabbitListener(queues = "payment.capture_completed.queue")
+    @RabbitListener(queues = "payment.captured.queue")
     @Transactional
     public void handle(@Payload Map<String, Object> event) {
         Map<String, Object> payload = (Map<String, Object>) event.get("payload");

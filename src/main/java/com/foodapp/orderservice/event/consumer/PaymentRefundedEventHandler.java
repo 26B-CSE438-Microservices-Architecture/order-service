@@ -23,7 +23,7 @@ public class PaymentRefundedEventHandler {
     private final OrderRepository orderRepository;
     private final OrderStateMachine stateMachine;
 
-    @RabbitListener(queues = "payment.capture_completed.queue")
+    @RabbitListener(queues = "payment.refunded.queue")
     @Transactional
     public void handle(@Payload Map<String, Object> event) {
         Map<String, Object> payload = (Map<String, Object>) event.get("payload");

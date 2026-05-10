@@ -35,7 +35,7 @@ public class PaymentHoldConfirmedEventHandler {
     @Value("${order.restaurant-timeout-minutes:5}")
     private int restaurantTimeoutMinutes;
 
-    @RabbitListener(queues = "payment.capture_completed.queue")
+    @RabbitListener(queues = "payment.authorized.queue")
     @Transactional
     public void handle(@Payload Map<String, Object> event) {
         Map<String, Object> payload = (Map<String, Object>) event.get("payload");
